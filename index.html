@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>BRACHIUM OS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#020c05">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script>
+  /* Black-box recorder: if any script error happens, print it on the boot screen
+     instead of failing silently, so problems on the phone can be reported. */
+  (function () {
+    function report(msg) {
+      var put = function () {
+        var b = document.getElementById('bootLog');
+        if (!b) return setTimeout(put, 100);
+        var d = document.createElement('div');
+        d.style.color = '#ff4d3d'; d.textContent = 'ERR: ' + msg;
+        b.appendChild(d);
+      };
+      put();
+    }
+    window.addEventListener('error', function (e) { report((e.message || 'Script error') + (e.lineno ? ' @ line ' + e.lineno : '')); });
+    window.addEventListener('unhandledrejection', function (e) { report('Promise: ' + (e.reason && e.reason.message || e.reason)); });
+  })();
+</script>
+<style>
+  /* ---------- THEMES: change colours here ---------- */
+  :root, [data-theme="pip"] {
+    --bg: #020c05; --fg: #2bff7a; --dim: #12803d; --faint: #0a3a1c;
+    --accent: #b6ffd0; --danger: #ff4d3d; --glow: rgba(43,255,122,.55);
+    --lvl-lo: #ff4d3d; --lvl-mid: #ffd23f; --lvl-hi: #2bff7a;
+  }
+  [data-theme="amber"] {
+    --bg: #0c0700; --fg: #ffb000; --dim: #8a5f00; --faint: #3a2800;
+    --accent: #ffe3a3; --danger: #ff4d3d; --glow: rgba(255,176,0,.5);
+    --lvl-lo: #ff4d3d; --lvl-mid: #ffb000; --lvl-hi: #fff1c9;
+  }
+  [data-theme="red"] {
+    --bg: #080000; --fg: #ff2e2e; --dim: #8a1212; --faint: #2e0606;
+    --accent: #ffb4a6; --danger: #ffd400; --glow: rgba(255,46,46,.55);
+    --lvl-lo: #ffd400; --lvl-mid: #ff8a3d; --lvl-hi: #ffb4a6;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+               overflow: hidden; overscroll-behavior: none; }
+  @supports (height: 100dvh) { html, body { height: 100dvh; } }   /* visible height only */
+  body {
+    font-family: 'Share Tech Mono', 'Courier New', monospace;
+    text-shadow: 0 0 6px var(--glow);
+    user-select: none; -webkit-user-select: none;
+    touch-action: manipulation;
+    padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right))
+             env(safe-area-inset-bottom) max(12px, env(safe-area-inset-left));
+  }
+
+  /* CRT scanlines + vignette sit above everything but ignore taps */
+  body::before, body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+  body::before { background: repeating-linear-gradient(to bottom, rgba(0,0,0,.28) 0 1px, transparent 1px 3px); }
+  body::after  { background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.75) 100%);
+                 animation: flicker 4s infinite steps(1); }
+  @keyframes flicker { 0%,100% {opacity:1} 47% {opacity:.85} 48% {opacity:1} 92% {opacity:.9} }
+
+  /* Portrait: display on top, controls at the bottom where your thumb is */
+  .app { height: 100%; display: flex; flex-direction: column; gap: 10px; padding: 8px 0 10px; }
+
+  /* ---------- Header ---------- */
+  header { display: flex; justify-content: space-between; align-items: center;
+           border-bottom: 1px solid var(--dim); padding-bottom: 4px; flex-shrink: 0; }
+  .title { font-family: 'VT323', monospace; font-size: clamp(22px, 7vw, 30px); letter-spacing: 2px; }
+  .chrono { display: flex; align-items: center; }
+  .clock-wrap { text-align: right; line-height: 1; }
+  .clock { display: block; font-family: 'VT323', monospace; font-size: clamp(28px, 9vw, 40px); letter-spacing: 1px;
+           color: var(--accent); font-variant-numeric: tabular-nums; }
+  .date-row { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
+  .date { font-size: 11px; color: var(--dim); letter-spacing: 1px; }
+  .theme-btn { background: none; border: 1px solid var(--dim); color: var(--fg); font: inherit;
+               font-size: 11px; min-width: 48px; min-height: 26px; padding: 0 6px; }
+
+  /* ---------- Header reticle (brand mark) ---------- */
+  .brand { display: flex; align-items: center; gap: 8px; }
+  .ret { width: 30px; height: 30px; display: block; overflow: visible; flex-shrink: 0; }
+  .ret .ring { fill: none; stroke: var(--dim); stroke-width: 2; stroke-dasharray: 9 5; }
+  .ret .tri  { fill: none; stroke: var(--fg); stroke-width: 2.6; }
+  .ret .brk  { fill: none; stroke: var(--dim); stroke-width: 2; }
+  .ret .pip  { fill: var(--accent); }
+  .ret .spin   { transform-origin: 32px 32px; animation: sweep 14s linear infinite; }
+  .ret .spin-r { transform-origin: 32px 32px; animation: sweep 7s linear infinite reverse; }
+  .ret.hot .tri { stroke: var(--danger); }
+  .ret.hot .pip { fill: var(--danger); animation: blink .4s steps(1) infinite; }
+
+  /* ---------- Gauge panels: same cut corners and borders as the command buttons ---------- */
+  .status { display: grid; grid-template-columns: repeat(var(--gauges, 3), minmax(0, 1fr)); gap: clamp(5px, 1.6vw, 8px); flex-shrink: 0; }
+  .gp { display: flex; flex-direction: column; gap: 5px; padding: 7px 8px 8px 8px; min-width: 0;
+        border: 1px solid var(--dim); transition: border-color .3s;
+        clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px)); }
+  .gh { display: flex; justify-content: space-between; align-items: baseline; gap: 2px; padding-right: 3px; }
+  .gp .lbl { font-size: 11px; color: var(--dim); }
+  .gp .val { font-family: 'VT323', monospace; font-size: clamp(15px, 4.6vw, 22px); line-height: .9; color: var(--accent);
+             font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .gp.hot { border-color: var(--danger); animation: hotFrame 1s steps(1) infinite; }
+  @keyframes hotFrame { 50% { border-color: var(--dim); } }
+  .gp.hot .val, .gp.hot .lbl { color: var(--danger); }
+
+  /* Mini instruments (PSI ladder, HR heart monitor, PWR staircase) */
+  .inst { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; overflow: visible; }
+  .inst .ol { fill: none; stroke: var(--dim); stroke-width: .8; }
+  .inst .fx { fill: var(--faint); transition: fill .25s; }
+  .inst .fx.on { fill: var(--fg); }
+  .inst .sx { fill: none; stroke: var(--faint); transition: stroke .25s; }
+  .inst .sx.on { stroke: var(--fg); }
+  .inst .sx.rl:not(.on) { stroke: var(--danger); opacity: .35; }
+  .inst .ecg { stroke-width: .85; stroke-linejoin: round; stroke-linecap: round; fill: none; }
+  .inst .ecg.newest { stroke: var(--accent); stroke-width: 1.05; }
+  .inst .ecg-dot { transition: r .1s; }
+  .gp.beat .inst .ecg-dot { r: 2.6; }
+  .gp.beat .val { color: var(--fg); text-shadow: 0 0 10px var(--fg); }
+  .inst .ptrg { transition: transform .7s cubic-bezier(.3, 1.5, .5, 1); }
+  .inst .ptr { fill: var(--accent); }
+  .gp.hot .inst .fx.on { fill: var(--danger); }
+  .gp.hot .inst .sx.on { stroke: var(--danger); }
+  .gp.hot .inst .ptr { fill: var(--danger); }
+  /* PWR zones: low / medium / high. Unlit bars keep a faint tint so the zones stay readable. */
+  .gp .inst .fx.z1.on { fill: var(--lvl-lo); }
+  .gp .inst .fx.z2.on { fill: var(--lvl-mid); }
+  .gp .inst .fx.z3.on { fill: var(--lvl-hi); }
+  .inst .fx.z1:not(.on) { fill: var(--lvl-lo);  opacity: .16; }
+  .inst .fx.z2:not(.on) { fill: var(--lvl-mid); opacity: .16; }
+  .inst .fx.z3:not(.on) { fill: var(--lvl-hi);  opacity: .16; }
+  .gp.chg .inst .fx.on { animation: chg 1.4s ease-in-out infinite; }
+  @keyframes chg { 50% { opacity: .45; } }
+
+  /* ---------- Terminal + radar overlay ---------- */
+  .term-wrap { position: relative; flex: 1 1 auto; min-height: 90px; display: flex; }
+  .term { flex: 1; border: 1px solid var(--dim); padding: 8px; font-size: 14px; line-height: 1.45;
+          overflow-y: auto; display: flex; flex-direction: column; }
+  .term div { white-space: pre-wrap; word-break: break-word; }
+  .term .sys { color: var(--dim); }
+  .term .ok { color: var(--accent); font-weight: bold; }
+  .term .bad { color: var(--danger); }
+  .cursor::after { content: "█"; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .progress { height: 4px; background: var(--faint); margin-top: auto; flex-shrink: 0; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--accent); }
+
+  /* Fullscreen scan mode: sits above the app, under the scanlines */
+  .radar-ov { position: fixed; inset: 0; z-index: 45; background: var(--bg);
+              display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+              padding: calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 18px);
+              opacity: 0; pointer-events: none; transition: opacity .2s; }
+  /* Four corner brackets start together in the middle and fly out to the screen corners;
+     the screen's contents switch on once they land. */
+  .crn { position: absolute; width: 30px; height: 30px; border: 0 solid var(--fg); pointer-events: none;
+         filter: drop-shadow(0 0 4px var(--glow)); }
+  .crn.tl { top: 12px; left: 12px; border-top-width: 2px; border-left-width: 2px; --sx: 1; --sy: 1; }
+  .crn.tr { top: 12px; right: 12px; border-top-width: 2px; border-right-width: 2px; --sx: -1; --sy: 1; }
+  .crn.bl { bottom: 12px; left: 12px; border-bottom-width: 2px; border-left-width: 2px; --sx: 1; --sy: -1; }
+  .crn.br { bottom: 12px; right: 12px; border-bottom-width: 2px; border-right-width: 2px; --sx: -1; --sy: -1; }
+  .radar-ov.on .crn { animation: crnOut .55s cubic-bezier(.7, 0, .2, 1) both; }
+  @keyframes crnOut {
+    0%   { transform: translate(calc(var(--sx) * (50vw - 27px)), calc(var(--sy) * (50vh - 27px))) scale(.5); opacity: 0; }
+    25%  { transform: translate(calc(var(--sx) * (50vw - 27px)), calc(var(--sy) * (50vh - 27px))) scale(.5); opacity: 1; }
+    100% { transform: none; opacity: 1; }
+  }
+  .radar-ov.on > :not(.crn) { animation: screenOn .3s .5s backwards; }
+  @keyframes screenOn { 0% { opacity: 0; } 40% { opacity: .8; } 55% { opacity: .2; } 100% { opacity: 1; } }
+  .radar-ov.on { opacity: 1; pointer-events: auto; }
+  .hud-line { width: min(100%, 480px); display: flex; justify-content: space-between;
+              font-size: 13px; letter-spacing: 2px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .radar { position: relative; width: min(84vw, 56vh, 460px); aspect-ratio: 1; border-radius: 50%;
+           border: 2px solid var(--fg); overflow: hidden;
+           background:
+             radial-gradient(circle, transparent 0 24%, var(--faint) 24.5% 25.5%, transparent 26% 49%,
+                             var(--faint) 49.5% 50.5%, transparent 51% 74%, var(--faint) 74.5% 75.5%, transparent 76%),
+             linear-gradient(var(--faint), var(--faint)) center / 1px 100% no-repeat,
+             linear-gradient(var(--faint), var(--faint)) center / 100% 1px no-repeat; }
+  @media (orientation: landscape) and (max-height: 520px) {
+    .radar-ov { gap: 6px; }
+    .radar { width: min(62vh, 50vw); }
+  }
+  .sweep { position: absolute; inset: 0; border-radius: 50%;
+           background: conic-gradient(from 0deg, transparent 0 72%, var(--glow) 100%);
+           animation: sweep 1.4s linear infinite; }
+  .sweep::after { content: ""; position: absolute; left: 50%; top: 0; width: 2px; height: 50%; background: var(--fg); }
+  @keyframes sweep { to { transform: rotate(360deg); } }
+  .radar.done .sweep { animation-play-state: paused; opacity: .25; }
+  .rblip { position: absolute; width: 8px; height: 8px; margin: -4px; border-radius: 50%;
+           background: var(--fg); box-shadow: 0 0 8px var(--fg); animation: fade 1.4s linear forwards; }
+  @keyframes fade { to { opacity: 0; } }
+  .rblip.target { width: 16px; height: 16px; margin: -8px; background: var(--danger);
+                  box-shadow: 0 0 12px var(--danger); animation: ping 1s ease-out infinite; }
+  @keyframes ping { 0% { box-shadow: 0 0 0 0 var(--danger); } 100% { box-shadow: 0 0 0 22px transparent; } }
+  .rs { font-family: 'VT323', monospace; font-size: 30px; letter-spacing: 3px; text-align: center;
+        text-transform: uppercase; line-height: 1.1; animation: blink 1s steps(1) infinite; }
+  .radar-ov > * { transition: opacity .2s; }
+  .radar-ov.alerting > :not(.crn) { opacity: .15; }
+
+  /* ---------- Bioscan: body silhouette ---------- */
+  .bio { height: min(62vh, 560px); width: auto; max-width: 100%; display: block; overflow: visible; }
+  @media (orientation: landscape) and (max-height: 520px) { .bio { height: 66vh; } }
+  .bio .vol  { fill: var(--faint); opacity: .5; }
+  .bio .vol.lit { fill: var(--fg); opacity: .12; }
+  .bio .mesh { stroke: var(--dim); stroke-width: .4; opacity: .8; }
+  .bio .mesh.lit { stroke: var(--fg); stroke-width: .45; opacity: 1; }
+  .bio .organs { fill: var(--fg); fill-opacity: .08; stroke: var(--accent); stroke-width: .45; stroke-opacity: .55; }
+  .bio .g0 { stop-color: var(--fg); stop-opacity: 0; }
+  .bio .g1 { stop-color: var(--fg); stop-opacity: .45; }
+  .bio .sl { stroke: var(--accent); stroke-width: 1.2; }
+  .bio .skel { fill: none; stroke: var(--accent); stroke-width: .7; stroke-linecap: round; stroke-linejoin: round; }
+  .bio .skel .vert { stroke-width: 1.8; stroke-dasharray: 2.3 1.2; stroke-linecap: butt; }
+  .bio .heart { fill: var(--danger); stroke: none; opacity: .8; transform-origin: 54px 63px; animation: beat .8s ease-in-out infinite; }
+  @keyframes beat { 50% { transform: scale(1.12); opacity: 1; } }
+  .bio .mk { opacity: 0; transition: opacity .35s; }
+  .bio .mk.show { opacity: 1; }
+  .bio .mk line { stroke: var(--dim); stroke-width: .6; stroke-dasharray: 2 1.5; }
+  .bio .mk text { font-family: 'VT323', monospace; fill: var(--accent); letter-spacing: 1px; }
+
+  /* Heads-up phase right before results appear */
+  .rs.urgent { color: var(--danger); animation: blink .25s steps(1) infinite; }
+  .radar-ov.warn { animation: warnFlash .22s steps(1) 4; }
+  @keyframes warnFlash { 50% { box-shadow: inset 0 0 0 5px var(--danger); } }
+
+  /* ---------- Music player ---------- */
+  .eq { display: flex; align-items: flex-end; gap: 4px; width: min(90vw, 460px); height: min(24vh, 200px); flex-shrink: 0;
+        border-bottom: 1px solid var(--dim); }
+  .eq i { flex: 1; height: 4%; background: var(--fg); border-top: 3px solid var(--accent);
+          clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+  .rs.mtitle { animation: none; }
+  #musOv { overflow-y: auto; justify-content: safe center; gap: 12px; }
+  .mlist { width: min(92vw, 460px); max-height: min(24vh, 200px); overflow-y: auto; flex-shrink: 0;
+           border: 1px solid var(--dim); }
+  .mlist .tr { display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; min-height: 42px;
+               border-bottom: 1px solid var(--faint); font-size: 14px; cursor: pointer; }
+  .mlist .tr.on { background: var(--faint); color: var(--accent); }
+  .mlist .tr.on .nm::before { content: "▶ "; }
+  .mlist .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mlist .tag { font-size: 11px; color: var(--dim); }
+  .mlist .x { background: none; border: 1px solid var(--dim); color: var(--dim); font: inherit; font-size: 12px;
+              min-width: 64px; min-height: 32px; }
+  .mlist .x.arm { border-color: var(--danger); color: var(--danger); }
+  .mbtns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: min(92vw, 460px); }
+  .mbtns .cmd { flex: 1 1 130px; min-height: 64px; text-align: center; font-size: 22px; }
+  .cmd.stop { border-color: var(--danger); color: var(--danger); }
+  .cmd.stop small { color: var(--dim); }
+
+  /* ---------- Completion alert (shared by every fullscreen effect) ---------- */
+  .alert { position: fixed; inset: 0; z-index: 46; display: flex; flex-direction: column; align-items: center;
+           justify-content: center; gap: 14px; padding: 24px; text-align: center; opacity: 0; pointer-events: none;
+           transition: opacity .25s; }
+  .alert.on { opacity: 1; }
+  .alert .a1 { font-family: 'VT323', monospace; font-size: clamp(30px, 9vw, 64px); letter-spacing: 8px;
+               padding: 0 12px; text-transform: uppercase; }
+  .alert .a2 { font-family: 'VT323', monospace; font-size: clamp(48px, 15vw, 130px); line-height: .9;
+               letter-spacing: 3px; padding: 10px 16px; text-transform: uppercase; }
+  /* 1.2s cycle: on long enough to read comfortably */
+  .alert.on .a1, .alert.on .a2.single { animation: alertBlink 1.2s steps(1) infinite; }
+  @keyframes alertBlink {
+    0%  { color: var(--bg); background: var(--danger); text-shadow: none; }
+    50% { color: var(--danger); background: transparent; text-shadow: 0 0 14px var(--danger); }
+  }
+  /* Single-line alerts: a holographic hazard banner projected across the screen */
+  .alert.banner-mode .a1, .alert.banner-mode .a2 { display: none; }
+  .alert:not(.banner-mode) .banner { display: none; }
+  .banner { --w: var(--lvl-mid); width: 100%; max-width: 900px; color: var(--w);
+            background:
+              radial-gradient(circle, color-mix(in srgb, var(--w) 22%, transparent) .7px, transparent 1.2px) 0 0 / 4px 4px,
+              repeating-linear-gradient(-45deg, color-mix(in srgb, var(--danger) 26%, transparent) 0 22px, transparent 22px 44px),
+              color-mix(in srgb, var(--w) 6%, var(--bg));
+            border-top: 1px solid color-mix(in srgb, var(--w) 40%, transparent);
+            border-bottom: 1px solid color-mix(in srgb, var(--w) 40%, transparent); }
+  .alert.on .banner { animation: projectIn .35s cubic-bezier(.2, .9, .3, 1.2) both, holo 3s steps(1) .4s infinite; }
+  @keyframes projectIn { from { transform: scaleY(0); opacity: 0; } 60% { opacity: 1; } }
+  @keyframes holo { 0%, 100% { opacity: 1; } 41% { opacity: .82; } 42% { opacity: 1; } 77% { opacity: .9; } }
+  .hz { height: 12px; background: repeating-linear-gradient(-45deg, var(--w) 0 10px, transparent 10px 22px);
+        box-shadow: 0 0 8px color-mix(in srgb, var(--w) 40%, transparent); }
+  .bmid { display: flex; align-items: center; gap: clamp(6px, 2vw, 22px); padding: 14px clamp(8px, 3vw, 28px); }
+  .tri { width: clamp(38px, 11vw, 96px); flex-shrink: 0; overflow: visible; }
+  .tri path { fill: none; stroke: var(--w); stroke-width: 2.6; stroke-linejoin: round;
+              filter: drop-shadow(0 0 4px var(--w)); }
+  .tri .ex { stroke-width: 4; stroke-linecap: square; }
+  .alert.on .tri { animation: triPulse 1.2s ease-in-out infinite; }
+  @keyframes triPulse { 50% { opacity: .35; } }
+  .btxt { flex: 1; min-width: 0; text-align: center; padding: 10px 0;
+          border-top: 2px dashed color-mix(in srgb, var(--w) 70%, transparent);
+          border-bottom: 2px dashed color-mix(in srgb, var(--w) 70%, transparent); }
+  .bh { font-family: 'VT323', monospace; font-size: clamp(22px, 6.5vw, 52px); letter-spacing: 8px; line-height: 1; }
+  .bt { font-family: 'VT323', monospace; font-size: clamp(38px, 11.5vw, 120px); line-height: .9; letter-spacing: 2px;
+        color: color-mix(in srgb, var(--w) 35%, #fff); text-shadow: 0 0 6px var(--w), 0 0 18px var(--w); }
+  .alert.on .bh, .alert.on .bt { animation: holoText 1.2s steps(1) infinite; }
+  @keyframes holoText { 50% { opacity: .3; text-shadow: none; } }
+
+  /* Multi-line reports stay steady and appear one line at a time */
+  .alert .a2.report { font-size: clamp(22px, 6.2vw, 50px); line-height: 1.15; letter-spacing: 2px;
+                      text-align: left; color: var(--danger); text-shadow: 0 0 10px var(--danger);
+                      border-left: 3px solid var(--danger); padding: 6px 0 6px 16px; }
+  .alert .a2.report div { animation: lineIn .25s steps(3); }
+  @keyframes lineIn { from { opacity: 0; } }
+
+  /* ---------- Controls ---------- */
+  .controls { display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs[hidden] { display: none; }
+  .tab { flex-shrink: 0; background: none; border: 1px solid var(--dim); color: var(--dim);
+         font: inherit; font-size: 13px; min-height: 36px; padding: 0 14px; }
+  .tab.on { color: var(--bg); background: var(--fg); text-shadow: none; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+          max-height: 50vh; overflow-y: auto; padding: 2px; }
+  /* Buttons: chunky late-70s spaceship console keys. A double-ruled frame, a heavy
+     bottom lip that sinks when pressed, a stencilled code line, a square status lamp,
+     and hazard stripes on danger keys. */
+  .cmd { position: relative; min-height: 72px; color: var(--fg); text-shadow: inherit; text-align: left;
+         background: color-mix(in srgb, var(--faint) 55%, var(--bg));
+         border: 2px solid var(--dim); border-bottom-width: 6px; border-radius: 3px;
+         box-shadow: inset 0 0 0 3px var(--bg), inset 0 0 0 4px var(--faint);
+         font-family: 'VT323', monospace; font-size: 24px; letter-spacing: 2px; line-height: 1;
+         padding: 9px 30px 8px 12px; transition: transform .06s, border-bottom-width .06s; }
+  .cmd .code { display: block; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1.5px;
+               color: var(--dim); margin-bottom: 5px; }
+  .cmd small { display: block; margin-top: 4px; font-family: 'Share Tech Mono', monospace;
+               font-size: 11px; color: var(--dim); letter-spacing: 1px; }
+  .cmd .led { position: absolute; top: 10px; right: 10px; width: 11px; height: 11px;
+              border: 1px solid var(--dim); background: var(--bg); }
+  .cmd:active, .cmd.run { transform: translateY(4px); border-bottom-width: 2px; margin-bottom: 4px;
+                          background: color-mix(in srgb, var(--faint) 90%, var(--bg)); }
+  .cmd:active .led, .cmd.run .led { background: var(--fg); border-color: var(--fg); box-shadow: 0 0 8px var(--fg); }
+  .cmd.run .lbl { color: var(--accent); }
+  .cmd.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 60%, var(--bg)); }
+  .cmd.danger::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: 5px; height: 5px;
+                       background: repeating-linear-gradient(-45deg, var(--danger) 0 5px, transparent 5px 10px); opacity: .55; }
+  .cmd.danger small { margin-bottom: 7px; }
+  .cmd.armed { background: color-mix(in srgb, var(--danger) 22%, var(--bg)); animation: pulse .5s infinite alternate; }
+  .cmd.armed .led { background: var(--danger); border-color: var(--danger); box-shadow: 0 0 8px var(--danger); }
+  @keyframes pulse { to { opacity: .55; } }
+  .grid.busy .cmd:not(.run) { opacity: .35; }
+
+  /* ---------- Landscape: display left, controls right ---------- */
+  @media (orientation: landscape) and (max-height: 520px) {
+    .app { display: grid; gap: 8px 14px;
+           grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+           grid-template-rows: auto auto minmax(0, 1fr);
+           grid-template-areas: "head ctrl" "stat ctrl" "term ctrl"; }
+    header { grid-area: head; }
+    .status { grid-area: stat; }
+    .term-wrap { grid-area: term; min-height: 0; }
+    .controls { grid-area: ctrl; min-height: 0; justify-content: center; }
+    .grid { max-height: 100%; }
+    .cmd { min-height: 58px; font-size: 21px; }
+    .clock { font-size: 32px; }
+  }
+
+  /* ---------- Glitch on command finish ---------- */
+  .glitch .app { animation: glitch .35s steps(2) 1; }
+  @keyframes glitch {
+    0% { transform: translate(0); filter: none; }
+    25% { transform: translate(-3px, 1px); filter: hue-rotate(60deg); }
+    50% { transform: translate(3px, -1px); }
+    75% { transform: translate(-1px, 2px); filter: hue-rotate(-40deg) saturate(2); }
+    100% { transform: translate(0); filter: none; }
+  }
+
+  /* ---------- Boot screen ----------
+     A fixed grid: every piece has its own reserved slot, so the boot messages
+     appearing one by one never push the globe or the INITIATE prompt around. */
+  #boot { position: fixed; inset: 0; z-index: 40; background: var(--bg);
+          padding: calc(env(safe-area-inset-top) + 26px) max(18px, env(safe-area-inset-right))
+                   calc(env(safe-area-inset-bottom) + 10px) max(18px, env(safe-area-inset-left));
+          font-size: 14px; line-height: 1.6; display: grid;
+          grid-template-rows: auto auto minmax(0, 1fr) auto;
+          grid-template-areas: "logo" "log" "globe" "tap"; }
+  #boot .logo { grid-area: logo; font-family: 'VT323', monospace; font-size: 50px; line-height: 1; margin-bottom: 14px; }
+  #bootLog { grid-area: log; white-space: pre; height: calc(1.6em * 8); overflow: hidden; }   /* room for all lines up front */
+  #globe { grid-area: globe; place-self: center; display: block; height: 100%; max-height: 420px;
+           max-width: 100%; aspect-ratio: 1; }
+  #boot .tap { grid-area: tap; text-align: center; font-family: 'VT323', monospace; font-size: 30px;
+               padding: 18px 0; animation: blink 1.2s steps(1) infinite; }
+  #boot.gone { opacity: 0; transition: opacity .5s; pointer-events: none; }
+  /* Landscape: globe fills the left side; logo, messages and prompt stack on the right */
+  @media (orientation: landscape) and (max-height: 520px) {
+    #boot { padding-top: calc(env(safe-area-inset-top) + 14px); font-size: 13px; column-gap: 28px;
+            grid-template-columns: auto minmax(0, 1fr);
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            grid-template-areas: "globe logo" "globe log" "globe tap"; }
+    #boot .logo { font-size: 38px; margin-bottom: 8px; }
+    #bootLog { height: auto; }
+    #globe { height: min(88vh, 46vw); align-self: center; }
+    #boot .tap { text-align: left; padding: 8px 0 4px; font-size: 28px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body data-theme="pip">
+
+<div id="boot">
+  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B14</span></div>
+  <div id="bootLog"></div>
+  <canvas id="globe" aria-hidden="true"></canvas>
+  <div class="tap">[ INITIATE SYSTEM ]</div>
+</div>
+
+<div class="app">
+  <header>
+    <span class="brand">
+      <svg class="ret" id="ret" viewBox="0 0 64 64" aria-hidden="true">
+        <g class="spin"><circle class="ring" cx="32" cy="32" r="27"/></g>
+        <g class="spin-r"><polygon class="tri" points="32,15 46.7,40.5 17.3,40.5"/></g>
+        <path class="brk" d="M4 14V4H14 M50 4H60V14 M60 50V60H50 M14 60H4V50"/>
+        <circle class="pip" cx="32" cy="32" r="3"/>
+      </svg>
+      <span class="title">BRACHIUM</span>
+    </span>
+    <span class="chrono">
+      <span class="clock-wrap">
+        <span class="clock" id="clock">--:--:--</span>
+        <span class="date-row"><span class="date" id="date"></span><button class="theme-btn" id="themeBtn">PIP</button></span>
+      </span>
+    </span>
+  </header>
+
+  <section class="status" id="status"></section>
+
+  <div class="term-wrap">
+    <section class="term" id="term">
+      <div class="progress"><i id="prog"></i></div>
+    </section>
+  </div>
+
+  <div class="controls">
+    <nav class="tabs" id="tabs" hidden></nav>
+    <section class="grid" id="grid"></section>
+  </div>
+</div>
+
+<div class="radar-ov" id="radarOv">
+  <div class="hud-line"><span>SECTOR SWEEP</span><span id="rBearing">BRG 000°</span></div>
+  <div class="radar" id="rField"><div class="sweep"></div></div>
+  <div class="rs" id="rStatus"></div>
+  <div class="hud-line"><span id="rRange">RNG 0000M</span><span id="rContacts">CONTACTS 00</span></div>
+</div>
+
+<div class="radar-ov" id="bioOv">
+  <div class="hud-line"><span>BIOSCAN // SUBJECT 01</span><span id="bPct">SCAN 000%</span></div>
+  <svg class="bio" viewBox="-54 -6 212 232" aria-hidden="true">
+    <defs>
+      <linearGradient id="band" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g0"/><stop offset="1" class="g1"/></linearGradient>
+      <clipPath id="scanClip"><rect id="scanRect" x="-80" y="-6" width="260" height="0"/></clipPath>
+      <path id="bodyPath"/>
+      <clipPath id="bodyClip"><use href="#bodyPath"/></clipPath>
+      <path id="meshPath" fill="none"/>
+      <g id="detailFig" fill="none" stroke-linecap="round">
+        <use href="#bodyPath" stroke-width=".7"/>
+        <path id="bodyDetail" stroke-width=".45"/>
+      </g>
+      <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="1.1" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <!-- unscanned: faint volume + dim contour mesh -->
+    <use href="#bodyPath" class="vol"/>
+    <use href="#meshPath" clip-path="url(#bodyClip)" class="mesh"/>
+    <use href="#detailFig" style="stroke: var(--dim)"/>
+    <!-- scanned: bright mesh, glowing outline, x-ray layer -->
+    <g clip-path="url(#scanClip)">
+      <use href="#bodyPath" class="vol lit"/>
+      <use href="#meshPath" clip-path="url(#bodyClip)" class="mesh lit"/>
+      <use href="#detailFig" style="stroke: var(--accent)" filter="url(#glow)"/>
+      <g class="organs" id="organs"></g>
+      <g class="skel" id="skel"></g>
+      <path class="heart" d="M51.2 57.6 C54.6 55.6 59 57.4 58.7 61.4 C58.4 65.4 55 68.2 52.6 69.6 C51.2 67.4 50.4 63.6 50.6 60.2 C50.7 59 50.9 58.2 51.2 57.6Z"/>
+    </g>
+    <g id="marks"></g>
+    <rect id="scanBand" x="-20" y="-20" width="140" height="16" fill="url(#band)"/>
+    <line id="scanLine" class="sl" x1="-24" x2="124" y1="0" y2="0"/>
+  </svg>
+  <div class="rs" id="bStatus"></div>
+  <div class="hud-line"><span id="bHr">HR 000 BPM</span><span>DEPTH 03</span></div>
+</div>
+
+<div class="radar-ov" id="musOv">
+  <div class="hud-line"><span>AUDIO LINK // CH 01</span><span id="mTime">00:00</span></div>
+  <div class="eq" id="eq"></div>
+  <div class="rs mtitle" id="mTitle"></div>
+  <div class="mlist" id="mList"></div>
+  <div class="mbtns">
+    <button class="cmd" id="mLoad">ADD SONGS<small>FROM PHONE</small></button>
+    <button class="cmd" id="mNext">NEXT<small>SKIP TRACK</small></button>
+    <button class="cmd stop" id="mStop">STOP<small>END PLAYBACK</small></button>
+  </div>
+  <input type="file" id="mFile" accept="audio/*" multiple hidden>
+  <div class="hud-line"><span id="mSrc">SOURCE: SYNTH CORE</span><span id="mStore">STORAGE --</span></div>
+</div>
+
+<div class="alert" id="rAlert">
+  <div class="banner">
+    <div class="hz"></div>
+    <div class="bmid">
+      <svg class="tri" viewBox="0 0 40 36" aria-hidden="true"><path d="M20 2 L38 34 H2 Z"/><path class="ex" d="M20 12 V24 M20 28 V30"/></svg>
+      <div class="btxt"><div class="bh" id="rBH"></div><div class="bt" id="rBT"></div></div>
+      <svg class="tri" viewBox="0 0 40 36" aria-hidden="true"><path d="M20 2 L38 34 H2 Z"/><path class="ex" d="M20 12 V24 M20 28 V30"/></svg>
+    </div>
+    <div class="hz"></div>
+  </div>
+  <div class="a1" id="rA1"></div><div class="a2" id="rA2"></div>
+</div>
+
+<script id="brachium-main">
+/* ======================================================
+   SETTINGS: the only part you normally need to edit
+   ====================================================== */
+const CONFIG = {
+  sheetUrl: '',   /* your Apps Script web app URL (ends in /exec); leave empty to run on built-in commands */
+  apiKey: ''      /* must match API_KEY in Code.gs */
+};
+const VERSION = 'v2.7', BUILD = 14;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
+
+/* ======================================================
+   Fallback commands — used if the sheet can't be reached
+   (also lets you preview this file in a normal browser)
+   ====================================================== */
+const FALLBACK = [
+  { label:'SCAN AREA', group:'ENV', lines:['Scanning area'], duration:4200, result:'ALERT: SAD BITCH DETECTED', danger:false, effect:'radar' },
+  { label:'CHECK VITALS', group:'MED', lines:['Scanning subject'], duration:5000,
+    result:'BIOSCAN COMPLETE: BRAIN ACTIVITY - LOW ({low}%)|TOXICITY LEVELS - HIGH ({high}%)|SENSE OF STYLE - TERRIBLE ({low}%)',
+    danger:false, effect:'bioscan' },
+  { label:'JUKEBOX', group:'AUD', lines:['BRACHIUM THEME'], duration:0, result:'PLAYBACK ENDED', danger:false, effect:'music' },
+  { label:'CORE OVERLOAD', group:'SYS', lines:['Bypassing reactor limiter','T-minus 3','T-minus 2','T-minus 1'], duration:3500, result:'ABORTED BY SAFETY PROTOCOL', danger:true, effect:'' }
+];
+
+/* HUD readouts. v is the fill level, 0-100. type picks the mini instrument.
+   low:true means LOW values are the danger zone (a draining battery). */
+const GAUGES = [
+  { k: 'PSI',  max: 600, unit: '',  v: 45, type: 'ladder' },
+  { k: 'HR',   max: 100, unit: '',  v: 22, type: 'ecg' },   // v 0-100 maps to 50-169 BPM
+  { k: 'PWR',  max: 100, unit: '%', v: 78, type: 'stairs', low: true }
+];
+const REDLINE = 80;   // levels at or above this (or below 100-REDLINE for low:true) go to danger
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const pick = arr => arr[rand(0, arr.length - 1)];
+const NAMES = ['ROGUE','NIX','DEXTER','WAKAKO','VEX','KESTREL','MAMA WELLES','GHOST'];
+
+let commands = [], activeGroup = 'ALL', busy = false, armed = null, audio = null;
+
+/* ---------- Template tokens for sheet output lines ---------- */
+function fill(t) {
+  return t
+    .replace(/\{ip\}/g,    () => `${rand(10,223)}.${rand(0,255)}.${rand(0,255)}.${rand(1,254)}`)
+    .replace(/\{hex\}/g,   () => rand(0, 0xFFFFFF).toString(16).toUpperCase().padStart(6, '0'))
+    .replace(/\{pct\}/g,   () => rand(3, 99))
+    .replace(/\{n\}/g,     () => rand(2, 480))
+    .replace(/\{low\}/g,   () => rand(2, 19))
+    .replace(/\{high\}/g,  () => rand(81, 99))
+    .replace(/\{coord\}/g, () => `${rand(10,89)}.${rand(1000,9999)}N ${rand(10,179)}.${rand(1000,9999)}W`)
+    .replace(/\{name\}/g,  () => pick(NAMES));
+}
+
+/* ---------- Sound (synthesised, no files needed) ---------- */
+function tone(freq = 880, dur = .04, type = 'square', vol = .035) {
+  if (!audio) return;
+  const o = audio.createOscillator(), g = audio.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, audio.currentTime);
+  g.gain.exponentialRampToValueAtTime(.0001, audio.currentTime + dur);
+  o.connect(g).connect(audio.destination);
+  o.start(); o.stop(audio.currentTime + dur);
+}
+/* Alert/error chime: a high note dropping to a lower one ("bee-boop"), the classic
+   console error pattern. Triangle waves sound soft and rounded compared with the harsh
+   sawtooth/square of a siren; a quiet sine an octave lower adds body without edge. */
+function chimeNote(freq, start, dur, vol = .055) {
+  [[freq, 'triangle', vol], [freq / 2, 'sine', vol * .5]].forEach(([f, type, v]) => {
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(.0001, start);
+    g.gain.linearRampToValueAtTime(v, start + .012);              // soft attack, no click
+    g.gain.exponentialRampToValueAtTime(.0001, start + dur);      // natural fade
+    o.connect(g).connect(audio.destination);
+    o.start(start); o.stop(start + dur + .02);
+  });
+}
+function alertChime(times = 3) {
+  if (!audio) return;
+  const t0 = audio.currentTime;
+  for (let i = 0; i < times; i++) {
+    const st = t0 + i * .33;
+    chimeNote(784, st, .13);         // G5
+    chimeNote(587, st + .14, .17);   // D5
+  }
+}
+/* ---------- Result reveal sounds (picked from the sound board) ---------- */
+function synth(type, f, st, dur, vol, lpf) {
+  const o = audio.createOscillator(), g = audio.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, st);
+  g.gain.setValueAtTime(.0001, st);
+  g.gain.linearRampToValueAtTime(vol, st + .01);
+  g.gain.setValueAtTime(vol, st + dur * .7);
+  g.gain.exponentialRampToValueAtTime(.0001, st + dur);
+  let out = o;
+  if (lpf) { const l = audio.createBiquadFilter(); l.type = 'lowpass'; l.frequency.value = lpf; o.connect(l); out = l; }
+  out.connect(g).connect(audio.destination);
+  o.start(st); o.stop(st + dur + .02);
+}
+const REVEALS = {
+  // "Access denied": two low, slightly detuned square buzzes
+  denied: t => { [0, .38].forEach(d => { synth('square', 120, t + d, .28, .09, 1200); synth('square', 126, t + d, .28, .09, 1200); }); return .66; },
+  // "Terminal triple": three sharp retro beeps, then a low tone
+  triple: t => { [0, .18, .36].forEach(d => synth('square', 540, t + d, .1, .05, 2200)); synth('square', 360, t + .6, .32, .05, 1600); return .92; },
+  // default for any other effect: the original two-tone klaxon
+  klaxon: t => { for (let i = 0; i < 4; i++) synth('square', i % 2 ? 620 : 880, t + i * .35, .3, .07); return 1.35; }
+};
+function playReveal(name) {
+  if (!audio) return 0;
+  return (REVEALS[name] || REVEALS.klaxon)(audio.currentTime + .02);
+}
+const OPEN_MS = 820;   // corner-bracket opening animation, in ms
+document.querySelectorAll('.radar-ov').forEach(ov =>
+  ['tl', 'tr', 'bl', 'br'].forEach(c => { const d = document.createElement('div'); d.className = 'crn ' + c; ov.appendChild(d); }));
+const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+
+/* ---------- Gauge panels ---------- */
+const isHot = g => g.low ? g.v <= 100 - REDLINE : g.v >= REDLINE;
+function instrument(g, i) {
+  const svg = inner => `<svg class="inst" viewBox="0 0 60 30" aria-hidden="true">${inner}</svg>`;
+  if (g.type === 'ladder') {
+    let t = '<line class="ol" x1="1" y1="19" x2="59" y2="19"/>';
+    for (let n = 0; n < 16; n++) {
+      const x = (2 + n * 3.73).toFixed(2), major = n % 5 === 0;
+      t += `<line class="sx tk${n >= 13 ? ' rl' : ''}" data-x="${x}" x1="${x}" y1="${major ? 2 : 8.5}" x2="${x}" y2="18" stroke-width="${major ? 1.6 : 1.1}"/>`;
+    }
+    return svg(t + '<g class="ptrg" id="ptr' + i + '"><polygon class="ptr" points="0,21 -3.6,28.6 3.6,28.6"/></g>');
+  }
+  if (g.type === 'ecg') {   // heart monitor: faint grid, trace, glowing write-head
+    let grid = '';
+    for (let x = 10; x < 60; x += 10) grid += `<line class="ol" x1="${x}" y1="1" x2="${x}" y2="29" style="opacity:.35"/>`;
+    return svg(grid + `<line class="ol" x1="1" y1="18" x2="59" y2="18" style="opacity:.35"/>` +
+      [6, 12, 24].map(y => `<line class="ol" x1="1" y1="${y}" x2="59" y2="${y}" style="opacity:.15"/>`).join('') +
+      // four trace layers: newest is bright and glowing, older ones fade like CRT phosphor
+      [3, 2, 1, 0].map(k => `<path class="sx on ecg${k ? '' : ' newest'}" id="ecg${k}_${i}" style="opacity:${[1, .6, .34, .16][k]}"/>`).join('') +
+      `<circle class="ptr ecg-dot" id="ecgD${i}" r="1.5" cx="1" cy="18"/>`);
+  }
+  // power staircase: ascending bars, like signal strength
+  let c = '';
+  for (let n = 0; n < 10; n++) {
+    const h = 5 + n * 2.35;
+    const zone = n <= 1 ? 'z1' : n <= 5 ? 'z2' : 'z3';   // 0-20% low, 30-60% medium, 70-100% high
+    c += `<rect class="fx cell ${zone}" x="${(1 + n * 5.85).toFixed(2)}" y="${(28 - h).toFixed(1)}" width="5.1" height="${h.toFixed(1)}"/>`;
+  }
+  return svg(c + '<line class="ol" x1="1" y1="28.6" x2="59" y2="28.6"/>');
+}
+/* ---------- Heart monitor ----------
+   Like a real bedside monitor: a write-head sweeps left to right, drawing the new
+   trace over the old one with a small erased gap just ahead of it. */
+const bpmOf = g => Math.round(50 + g.v * 1.2);
+const ECG_N = 240, ECG_SWEEP = 2.6;   // samples across the screen, seconds per sweep
+function ecgWave(ph) {                 // one heartbeat, phase 0-1 (negative = upward)
+  const b = (c, w, a) => a * Math.exp(-((ph - c) ** 2) / (2 * w * w));
+  return b(.16, .028, -1.6) + b(.29, .012, 1.4) + b(.32, .011, -10.5) + b(.35, .012, 3.2) + b(.56, .045, -2.8);
+}
+let ecgLoop = false;
+function startEcg() {
+  if (ecgLoop) return;
+  const mons = GAUGES.map((g, i) => g.type === 'ecg'
+    ? { g, i, ys: new Array(ECG_N).fill(18), ph: 0, acc: 0, rate: 1, amp: 1 } : null).filter(Boolean);
+  if (!mons.length) return;
+  ecgLoop = true;
+  const X = n => (1 + n * 58 / (ECG_N - 1)).toFixed(2);
+  const GAP = 8, BAND = ECG_N / 4;
+  let head = 0, last = performance.now(), tick30 = 0;
+  function frame(now) {
+    if ((tick30++ & 1) === 1) { requestAnimationFrame(frame); return; }   // ~30fps is plenty for a monitor
+    const dt = Math.max(0, Math.min(.1, (now - last) / 1000)); last = now;
+    mons.forEach(m => { m.acc += dt * ECG_N / ECG_SWEEP; });
+    const steps = Math.floor(mons[0].acc);
+    mons.forEach(m => {
+      m.acc -= steps;
+      for (let k = 0; k < steps; k++) {
+        const dph = (ECG_SWEEP / ECG_N) * (bpmOf(m.g) / 60) * m.rate;
+        // check 3 points inside each sample so the sharp R spike is never skipped
+        let v = 0;
+        for (let q = 0; q < 3; q++) { const w = ecgWave((m.ph + dph * q / 3) % 1); if (Math.abs(w) > Math.abs(v)) v = w; }
+        m.ys[(head + k) % ECG_N] = 18 + v * 1.18 * m.amp;
+        if (m.ph < .32 && m.ph + dph >= .32) m.beat = true;                // R peak just drawn
+        if (m.ph + dph >= 1) {                                              // new beat: natural variation
+          m.rate = .94 + Math.random() * .12;   // beat-to-beat timing (heart rate variability)
+          m.amp  = .9 + Math.random() * .18;    // slight height change, like breathing
+        }
+        m.ph = (m.ph + dph) % 1;
+      }
+    });
+    head = (head + steps) % ECG_N;
+
+    mons.forEach(m => {
+      const { ys, i } = m;
+      // Build one path per age band, oldest first, breaking where the sweep wraps around.
+      const ds = ['', '', '', ''];
+      let prevPos = -1, prevB = -1;
+      for (let age = ECG_N - 1 - GAP; age >= 0; age--) {
+        const pos = (head - 1 - age + ECG_N * 2) % ECG_N;
+        const b = Math.min(3, Math.floor(age / BAND));
+        const pt = `${X(pos)} ${ys[pos].toFixed(1)}`;
+        if (prevB === -1 || pos < prevPos) ds[b] += `M${pt}`;
+        else if (b !== prevB) ds[b] += `M${X(prevPos)} ${ys[prevPos].toFixed(1)}L${pt}`;   // join bands seamlessly
+        else ds[b] += `L${pt}`;
+        prevPos = pos; prevB = b;
+      }
+      ds.forEach((d, k) => $(`ecg${k}_${i}`).setAttribute('d', d));
+      const hp = (head - 1 + ECG_N) % ECG_N;
+      $('ecgD' + i).setAttribute('cx', X(hp)); $('ecgD' + i).setAttribute('cy', ys[hp].toFixed(1));
+      if (m.beat) {                                   // flash the readout on every heartbeat
+        m.beat = false;
+        const panel = $('c' + i);
+        panel.classList.add('beat');
+        setTimeout(() => panel.classList.remove('beat'), 140);
+      }
+    });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+function buildGauges() {
+  $('status').style.setProperty('--gauges', GAUGES.length);   // columns follow the gauge count
+  $('status').innerHTML = GAUGES.map((g, i) => `
+    <div class="gp" id="c${i}">
+      <div class="gh"><span class="lbl">${g.k}</span><span class="val"></span></div>
+      ${instrument(g, i)}
+    </div>`).join('');
+  drawGauges();
+  startEcg();
+}
+function drawGauges() {
+  let anyHot = false;
+  GAUGES.forEach((g, i) => {
+    const hot = isHot(g); anyHot = anyHot || hot;
+    const panel = $('c' + i);
+    panel.classList.toggle('hot', hot);
+    panel.querySelector('.val').textContent = g.type === 'ecg' ? bpmOf(g) + ' BPM' : Math.round(g.v / 100 * g.max) + g.unit;
+    panel.querySelector('.lbl').textContent = g.charging ? 'CHG' : g.k;
+    panel.classList.toggle('chg', !!g.charging);
+
+    if (g.type === 'ladder') {
+      const x = 2 + g.v / 100 * 56;
+      $('ptr' + i).style.transform = `translateX(${x.toFixed(1)}px)`;
+      panel.querySelectorAll('.tk').forEach(t => t.classList.toggle('on', +t.dataset.x <= x));
+    } else {
+      const cells = panel.querySelectorAll('.cell');
+      const lit = Math.max(1, Math.round(g.v / 100 * cells.length));
+      cells.forEach((c, j) => c.classList.toggle('on', j < lit));
+    }
+  });
+  $('ret').classList.toggle('hot', anyHot);
+}
+/* Real battery: Chrome on Android exposes it through the Battery Status API, but only
+   to a top-level page. Inside the Apps Script iframe it's blocked, so PWR stays
+   simulated there and switches to the real level automatically in the installed app. */
+async function hookBattery() {
+  const pwr = GAUGES.find(g => g.k === 'PWR');
+  if (!pwr || !navigator.getBattery) return false;
+  try {
+    const bat = await navigator.getBattery();
+    const sync = () => {
+      pwr.real = true;
+      pwr.v = Math.max(1, Math.round(bat.level * 100));
+      pwr.charging = bat.charging;
+      drawGauges();
+    };
+    sync();
+    bat.addEventListener('levelchange', sync);
+    bat.addEventListener('chargingchange', sync);
+    return true;
+  } catch (e) { return false; }
+}
+function nudgeGauges(big = true) {
+  GAUGES.forEach(g => { if (g.real) return; g.v = Math.max(2, Math.min(99, g.v + rand(big ? -28 : -4, big ? 28 : 4))); });
+  drawGauges();
+}
+/* Procedural "alien script": random strokes on a 3x3 dot grid, so every glyph is unique */
+function glyphSvg() {
+  const P = [[0,0],[3,0],[6,0],[0,4],[3,4],[6,4],[0,8],[3,8],[6,8]];
+  let d = '';
+  for (let k = rand(2, 3); k > 0; k--) {
+    const a = pick(P), b = pick(P.filter(p => p !== a));
+    d += `M${a[0]} ${a[1]}L${b[0]} ${b[1]}`;
+  }
+  return `<svg viewBox="0 0 6 8"><path d="${d}"/></svg>`;
+}
+function drawGlyphs() {
+  GAUGES.forEach((g, i) => {
+    const el = $('gl' + i);
+    if (el) el.innerHTML = glyphSvg() + glyphSvg();
+  });
+}
+
+/* ---------- Terminal output ---------- */
+function newLine(cls = '') {
+  const term = $('term'), d = document.createElement('div');
+  d.className = cls;
+  term.insertBefore(d, term.lastElementChild);   // keep progress bar last
+  while (term.children.length > 60) term.removeChild(term.firstChild);
+  return d;
+}
+async function typeLine(text, cls = '', speed = 14) {
+  const d = newLine(cls + ' cursor');
+  for (const ch of text) {
+    d.textContent += ch;
+    if (ch !== ' ') tone(rand(1400, 2200), .012, 'square', .012);
+    $('term').scrollTop = $('term').scrollHeight;
+    await sleep(speed);
+  }
+  d.classList.remove('cursor');
+}
+
+/* ---------- Radar scan effect (fullscreen) ---------- */
+function addBlip(field, target) {
+  const b = document.createElement('div'), a = Math.random() * Math.PI * 2;
+  const d = target ? rand(18, 34) : rand(8, 44);
+  b.className = 'rblip' + (target ? ' target' : '');
+  b.style.left = (50 + Math.cos(a) * d) + '%';
+  b.style.top  = (50 + Math.sin(a) * d) + '%';
+  field.appendChild(b);
+  if (!target) setTimeout(() => b.remove(), 1400);
+}
+async function radarScan(cmd, result) {
+  const ov = $('radarOv'), field = $('rField'), st = $('rStatus'), al = $('rAlert');
+  field.querySelectorAll('.rblip').forEach(b => b.remove());
+  field.classList.remove('done');
+  ov.classList.remove('alerting'); al.classList.remove('on');
+  ov.classList.add('on');
+  await sleep(OPEN_MS);   // let the corner brackets fly out first
+
+  const t0 = Date.now(); let contacts = 0;
+  const hud = setInterval(() => {
+    const brg = Math.floor(((Date.now() - t0) / 1400 * 360) % 360);
+    $('rBearing').textContent = 'BRG ' + String(brg).padStart(3, '0') + '°';
+    $('rRange').textContent = 'RNG ' + String(rand(120, 2400)).padStart(4, '0') + 'M';
+  }, 90);
+  const ping = () => tone(1250, .25, 'sine', .06);
+  ping();
+  const pinger  = setInterval(ping, 1400);                    // one ping per sweep
+  const blipper = setInterval(() => {
+    addBlip(field, false); nudgeGauges(false);
+    $('rContacts').textContent = 'CONTACTS ' + String(++contacts).padStart(2, '0');
+  }, 450);
+
+  const lines = cmd.lines.length ? cmd.lines : ['Scanning area'];
+  for (const l of lines) {
+    st.textContent = fill(l);
+    await sleep(cmd.duration / lines.length);
+  }
+  clearInterval(hud); clearInterval(pinger); clearInterval(blipper);
+
+  field.classList.add('done');
+  addBlip(field, true);
+  await showAlert(result, ov, 'denied');
+}
+
+/* ---------- Bioscan effect (fullscreen, head to toes) ---------- */
+/* Right half of the body outline, top of head to crotch (x 50 is the centre line,
+   ~8 heads tall). The left half is mirrored, and the outline is smoothed with
+   Catmull-Rom curves so it reads as anatomy rather than stacked shapes. */
+const BODY_R = [
+  // head (egg-shaped skull, cheek, jaw) and a shorter neck
+  [50,0],[54.6,.6],[57.9,2.6],[59.7,6],[60.4,10],[60.2,14],[59.3,17.5],[58.2,20.5],[57,23.5],
+  [56.2,26],[56.3,29.5],
+  // trapezius slope into a rounded shoulder cap
+  [58.4,32.5],[63,34.6],[69,36.6],[73.5,38.6],[76.6,41],[78.6,44.5],[79.6,49],[80,55],
+  // outer arm
+  [81,63],[82.4,70],[84.2,78],[85.5,86],[86.4,94],[87.4,99.5],[88.5,103.5],
+  // hand, palm forward: thumb out to the side, then four fingers
+  [90.1,106.5],[92.6,109.4],[94.5,112.6],[94.4,114.4],[93.0,114.2],[91.0,112.4],
+  [90.7,115.5],[91.0,120.3],[90.7,124.6],[89.7,125.6],[88.8,124.8],[88.5,124.2],
+  [88.2,126.0],[87.3,127.2],[86.1,126.6],[85.9,125.2],
+  [85.3,126.2],[84.3,127.0],[83.2,126.2],[83.0,124.8],
+  [82.5,124.4],[81.6,125.2],[80.7,124.4],[80.6,118.5],[80.0,113.5],[79.4,108.0],[79.6,103.5],
+  // inner arm up to the armpit
+  [79.2,99],[77.2,93],[75,87],[72.8,80],[72,74],[71,68],[69.5,65.5],
+  // torso and hip
+  [68,68],[67.2,74],[66.9,80],[67.4,86],[68.6,92],[70,99],[70.8,106],[71,114],[70.7,121],
+  // leg and foot
+  [70.2,127],[69.2,135],[68.2,143],[68.4,152],[68.9,162],[68.5,170],[67.4,178],[66,186],[64.6,194],
+  [64.6,201],[66.5,205],[69.5,208.5],[71,211.5],[69.8,214.5],[64,215],[59.5,214],
+  [57.4,210],[56.6,205],[57.2,198],[57.3,190],[56.2,182],[54.9,174],[54.4,166],[54.6,158],
+  [54.1,150],[53.2,142],[52,134],[51,128],[50,125]
+];
+/* X-ray skeleton, right side only (mirrored). Only visible behind the scan beam. */
+const SKEL_R = [
+  'M50 1.8 C56.2 1.8 59.2 6 59.2 11.5 C59.2 16 57.4 19 55.9 21', 'M56.4 21 Q56.3 26.5 50 28',
+  'M51 37 Q60 36.5 72 40',
+  ...Array.from({ length: 7 }, (_, i) => {
+    const y = 44 + i * 5.6, w = 66.5 - i * .5;
+    return `M51 ${y.toFixed(1)} Q62 ${(y - 1.6).toFixed(1)} ${w} ${(y + 3.6).toFixed(1)}`;
+  }),
+  'M51 106 Q59 100 66.5 104 Q66 113 58.5 117 Q54 119 51 118.5',
+  'M75 47 L80.5 86', 'M81 89 L84.3 104',
+  'M87.9 106 L93.5 113.3', 'M85.6 107 L89.6 124.1', 'M85.0 107 L87.2 125.8', 'M84.3 107 L84.3 125.6', 'M83.4 107 L81.6 123.8',
+  'M64 114 L61.5 156', 'M61.2 161 L60.8 200'
+];
+/* Wireframe anatomy hints, right side only (mirrored) */
+const DETAIL_R = [
+  'M50 36 Q59 35.5 70 38.5', 'M51 54 Q61 60 68 54', 'M68.5 98 Q59 112 51.5 122',
+  'M58 158 Q61.5 162 65 158', 'M53 30 L54 35'
+];
+/* Organs behind the ribs (right lung, mirrored) */
+const ORGANS_R = ['M52.5 45 Q60 41.5 64.5 49 Q66.8 61 64.2 73 Q58.5 76.5 53.6 72 Q52 59 52.5 45Z'];
+const mirrorD = d => d.replace(/(-?\d+\.?\d*) (-?\d+\.?\d*)/g, (m, x, y) => `${+(100 - x).toFixed(2)} ${y}`);
+function smoothClosed(pts) {
+  const n = pts.length, f = v => +v.toFixed(2);
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+    d += ` C${f(p1[0] + (p2[0] - p0[0]) / 6)} ${f(p1[1] + (p2[1] - p0[1]) / 6)}` +
+         ` ${f(p2[0] - (p3[0] - p1[0]) / 6)} ${f(p2[1] - (p3[1] - p1[1]) / 6)} ${p2[0]} ${p2[1]}`;
+  }
+  return d + 'Z';
+}
+/* Contour mesh: for every 2.6 units of height, find where that row crosses the
+   body and draw a slightly bowed line across each crossing. Wider parts bow more,
+   so the torso reads as a barrel and the limbs as cylinders — that's the 3D feel. */
+function meshD(poly) {
+  let d = '';
+  for (let y = 1.5; y < 215; y += 2.6) {
+    const xs = [];
+    for (let k = 0; k < poly.length; k++) {
+      const [x1, y1] = poly[k], [x2, y2] = poly[(k + 1) % poly.length];
+      if ((y1 <= y && y < y2) || (y2 <= y && y < y1)) xs.push(x1 + (y - y1) * (x2 - x1) / (y2 - y1));
+    }
+    xs.sort((a, b) => a - b);
+    for (let k = 0; k + 1 < xs.length; k += 2) {
+      const a = xs[k] - 2, b = xs[k + 1] + 2, sag = Math.min(3.2, (b - a) * .09);
+      d += `M${a.toFixed(1)} ${y.toFixed(1)}Q${((a + b) / 2).toFixed(1)} ${(y + sag).toFixed(1)} ${b.toFixed(1)} ${y.toFixed(1)}`;
+    }
+  }
+  return d;
+}
+function buildBody() {
+  if ($('bodyPath').getAttribute('d')) return;
+  const left = BODY_R.slice(1, -1).reverse().map(([x, y]) => [100 - x, y]);
+  const poly = BODY_R.concat(left);
+  $('bodyPath').setAttribute('d', smoothClosed(poly));
+  $('meshPath').setAttribute('d', meshD(poly));
+  $('organs').innerHTML = `<path d="${ORGANS_R.join(' ')} ${ORGANS_R.map(mirrorD).join(' ')}"/>`;
+  $('bodyDetail').setAttribute('d', 'M50 33 L50 124 ' + DETAIL_R.join(' ') + ' ' + DETAIL_R.map(mirrorD).join(' '));
+  $('skel').innerHTML = '<path class="vert" d="M50 30 L50 112"/>' +
+    `<path d="${SKEL_R.join(' ')} ${SKEL_R.map(mirrorD).join(' ')}"/>`;
+}
+const MARKS = [   // y on the body, side, label, where the leader line meets the body
+  [14, 'L', 'NEURAL', 39.4], [52, 'R', 'CARDIO', 79.6], [84, 'L', 'TOXIN', 15],
+  [110, 'R', 'CORE', 93.5], [150, 'L', 'MOTOR', 31.8], [200, 'R', 'SKELETAL', 64.6]
+];
+function buildMarks() {
+  $('marks').innerHTML = MARKS.map(([y, side, label, edge], i) => side === 'L'
+    ? `<g class="mk" id="mk${i}"><line x1="-6" y1="${y}" x2="${edge}" y2="${y}"/>
+         <text x="-9" y="${y + 3.5}" font-size="12" text-anchor="end">${label}</text></g>`
+    : `<g class="mk" id="mk${i}"><line x1="${edge}" y1="${y}" x2="106" y2="${y}"/>
+         <text x="109" y="${y + 3.5}" font-size="12">${label}</text></g>`).join('');
+}
+async function bioScan(cmd, result) {
+  const ov = $('bioOv'), st = $('bStatus');
+  buildBody(); buildMarks();
+  ov.classList.add('on');
+  await sleep(OPEN_MS);   // let the corner brackets fly out first
+  const lines = cmd.lines.length ? cmd.lines : ['Scanning subject'];
+  const shown = new Set();
+  const hum = setInterval(() => tone(rand(180, 240), .08, 'sawtooth', .02), 260);
+  const hr  = setInterval(() => { const hg = GAUGES.find(g => g.type === 'ecg'); $('bHr').textContent = 'HR ' + (hg ? bpmOf(hg) : rand(96, 148)) + ' BPM'; }, 500);
+
+  await new Promise(done => {
+    const t0 = performance.now();
+    function frame(now) {
+      // rAF timestamps can land slightly before t0, so clamp to 0..1
+      const p = Math.max(0, Math.min(1, (now - t0) / cmd.duration)), y = -6 + p * 228;
+      $('scanRect').setAttribute('height', y + 6);
+      $('scanLine').setAttribute('y1', y); $('scanLine').setAttribute('y2', y);
+      $('scanBand').setAttribute('y', y - 16);
+      $('bPct').textContent = 'SCAN ' + String(Math.round(p * 100)).padStart(3, '0') + '%';
+      st.textContent = fill(lines[Math.min(lines.length - 1, Math.floor(p * lines.length))]);
+      MARKS.forEach(([my], i) => {
+        if (y >= my && !shown.has(i)) {
+          shown.add(i);
+          const mk = $('mk' + i);
+          mk.classList.add('show');
+          tone(1600, .05, 'square', .04);
+          nudgeGauges(false);
+        }
+      });
+      p < 1 ? requestAnimationFrame(frame) : done();
+    }
+    requestAnimationFrame(frame);
+  });
+  clearInterval(hum); clearInterval(hr);
+  await showAlert(result, ov, 'triple');
+}
+
+/* ---------- Completion alert ----------
+   "HEAD: line one|line two|line three"
+   One line after the colon -> huge blinking text. Several -> a steady report, revealed line by line. */
+async function showAlert(result, ov, sound) {
+  const al = $('rAlert'), a2 = $('rA2');
+  const parts = result.split('|').map(x => x.trim()).filter(Boolean);
+  let head = 'ALERT', lines = parts;
+  const cut = (parts[0] || '').indexOf(':');
+  if (cut > -1) {
+    head = parts[0].slice(0, cut + 1);
+    const rest = parts[0].slice(cut + 1).trim();
+    lines = (rest ? [rest] : []).concat(parts.slice(1));
+  }
+  const multi = lines.length > 1;
+
+  // Heads-up: rapid rising beeps + flashing frame, so nobody gets blindsided by the result
+  const st = ov.querySelector('.rs');
+  st.textContent = 'PROCESSING RESULTS';
+  st.classList.add('urgent');
+  ov.classList.add('warn');
+  alertChime(3);   // three "bee-boop" error pulses over one second
+  buzz([40, 70, 40, 70, 40]);
+  await sleep(1000);
+  st.classList.remove('urgent');
+  ov.classList.remove('warn');
+
+  $('rA1').textContent = head;
+  a2.className = 'a2 ' + (multi ? 'report' : 'single');
+  a2.textContent = multi ? '' : (lines[0] || '');
+  al.classList.toggle('banner-mode', !multi);           // single line -> hazard banner
+  st.textContent = '';
+  $('rBH').textContent = head;
+  $('rBT').textContent = multi ? '' : (lines[0] || '');
+
+  ov.classList.add('alerting'); al.classList.add('on');
+  const revealLen = playReveal(sound);   // seconds the reveal sound lasts
+  buzz([200, 100, 200, 100, 400]);
+
+  if (multi) {
+    await sleep(Math.max(700, (revealLen + .2) * 1000));   // let the reveal sound finish before the first line beeps
+    for (const l of lines) {
+      const d = document.createElement('div'); d.textContent = l; a2.appendChild(d);
+      tone(1100, .06, 'square', .05);
+      await sleep(650);
+    }
+    await sleep(3200);
+  } else {
+    await sleep(3600);
+  }
+
+  ov.classList.remove('on'); al.classList.remove('on');
+  await sleep(300);
+  ov.classList.remove('alerting');
+}
+
+/* ---------- Song storage (IndexedDB) ----------
+   IndexedDB is a database built into the browser. Songs you add are copied into it,
+   so they're still there next time you open BRACHIUM, even offline. */
+const SongDB = (() => {
+  let dbp;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('brachium', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('songs', { keyPath: 'id', autoIncrement: true });
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  }));
+  const run = async (mode, fn) => {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const t = db.transaction('songs', mode), req = fn(t.objectStore('songs'));
+      t.oncomplete = () => res(req && req.result);
+      t.onerror = () => rej(t.error);
+    });
+  };
+  return {
+    all: () => run('readonly', s => s.getAll()),
+    add: (name, blob) => run('readwrite', s => s.add({ name, blob, added: Date.now() })),
+    del: id => run('readwrite', s => s.delete(id))
+  };
+})();
+async function storageText() {
+  try {
+    const { usage } = await navigator.storage.estimate();
+    return 'STORAGE ' + (usage / 1048576).toFixed(1) + ' MB';
+  } catch (e) { return 'STORAGE OK'; }
+}
+
+/* ---------- BRACHIUM theme: original jumpstyle track, generated live ----------
+   145 BPM. Distorted kick on every beat, a short punchy bass on every offbeat (the
+   bounce you jump to), and a staccato "stab" lead: two detuned squares through a
+   filter that snaps shut, so every note is a short pluck instead of a held note.
+   Am - F - C - G, eight-bar loop. */
+const MIDI = m => 440 * Math.pow(2, (m - 69) / 12);
+const HS = {
+  roots: [33, 29, 36, 31],                       // A1 F1 C2 G1, one per bar
+  lead: [
+    [76,0,76,0,79,0,76,0,81,0,79,0,76,0,74,0],   // Am
+    [77,0,77,0,81,0,77,0,84,0,81,0,77,0,76,0],   // F
+    [76,0,76,0,79,0,76,0,84,0,83,0,79,0,76,0],   // C
+    [74,0,74,0,79,0,74,0,83,0,79,0,74,0,71,0],   // G
+    [76,0,76,0,79,0,76,0,81,0,79,0,76,0,74,0],
+    [77,0,77,0,81,0,77,0,84,0,81,0,77,0,76,0],
+    [76,0,76,0,79,0,76,0,84,0,83,0,79,0,76,0],
+    [79,0,79,79,81,0,83,0,84,0,83,0,81,0,79,0]   // fill back into the loop
+  ]
+};
+function distCurve(k) {                          // soft-clip curve: the "hard" in hardstyle
+  const c = new Float32Array(1024);
+  for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; c[i] = (1 + k) * x / (1 + k * Math.abs(x)); }
+  return c;
+}
+function startTheme() {
+  const comp = audio.createDynamicsCompressor(), bus = audio.createGain(), an = audio.createAnalyser();
+  bus.gain.value = .5; an.fftSize = 64; an.smoothingTimeConstant = .7;
+  bus.connect(comp).connect(an).connect(audio.destination);
+  const drive = audio.createWaveShaper(); drive.curve = distCurve(60); drive.oversample = '2x';
+  const kickTone = audio.createBiquadFilter(); kickTone.type = 'lowpass'; kickTone.frequency.value = 2800;
+  drive.connect(kickTone).connect(bus);
+  const bassDrive = audio.createWaveShaper(); bassDrive.curve = distCurve(12);
+  const bassLp = audio.createBiquadFilter(); bassLp.type = 'lowpass'; bassLp.frequency.value = 900;
+  bassDrive.connect(bassLp).connect(bus);
+  const leadLp = audio.createBiquadFilter(); leadLp.type = 'lowpass'; leadLp.frequency.value = 5200;
+  leadLp.connect(bus);
+
+  const noiseBuf = audio.createBuffer(1, audio.sampleRate * .3, audio.sampleRate);
+  noiseBuf.getChannelData(0).forEach((_, k, d) => { d[k] = Math.random() * 2 - 1; });
+  const noise = (t, dur, vol, type, freq) => {
+    const s = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain();
+    s.buffer = noiseBuf; f.type = type; f.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    s.connect(f).connect(g).connect(bus); s.start(t); s.stop(t + dur + .02);
+  };
+  const kick = t => {                              // pitch punch, then a distorted tonal tail
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.frequency.setValueAtTime(320, t); o.frequency.exponentialRampToValueAtTime(58, t + .045);
+    o.frequency.exponentialRampToValueAtTime(48, t + .3);
+    g.gain.setValueAtTime(.9, t); g.gain.setValueAtTime(.9, t + .08); g.gain.exponentialRampToValueAtTime(.0001, t + .24);
+    o.connect(g).connect(drive); o.start(t); o.stop(t + .26);   // shorter tail leaves room for the offbeat bass
+  };
+  const offBass = (t, m) => {                    // instant hit, quick decay: the jumpstyle bounce
+    [['sawtooth', 0], ['square', -8]].forEach(([type, cents]) => {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = type; o.frequency.value = MIDI(m + 12); o.detune.value = cents;
+      g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.32, t + .004);
+      g.gain.exponentialRampToValueAtTime(.0001, t + .14);
+      o.connect(g).connect(bassDrive); o.start(t); o.stop(t + .16);
+    });
+  };
+  const stab = (t, m) => {                       // plucky lead: filter snaps from bright to dull
+    const f = audio.createBiquadFilter(), g = audio.createGain();
+    f.type = 'lowpass'; f.Q.value = 6;
+    f.frequency.setValueAtTime(5200, t); f.frequency.exponentialRampToValueAtTime(700, t + .13);
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.07, t + .003);
+    g.gain.exponentialRampToValueAtTime(.0001, t + .16);
+    f.connect(g).connect(leadLp);
+    [-9, 9].forEach(cents => {
+      const o = audio.createOscillator();
+      o.type = 'square'; o.frequency.value = MIDI(m); o.detune.value = cents;
+      o.connect(f); o.start(t); o.stop(t + .18);
+    });
+  };
+
+  const s16 = 60 / 145 / 4;                        // one 16th note at 145 BPM
+  let k = 0, next = audio.currentTime + .1;
+  const timer = setInterval(() => {
+    while (next < audio.currentTime + .15) {
+      const bar = (k >> 4) % 8, step = k & 15, root = HS.roots[bar % 4];
+      if (step % 4 === 0) kick(next);
+      if (step % 4 === 2) { offBass(next, root); noise(next, .09, .07, 'highpass', 7000); }
+      if (step === 4 || step === 12) noise(next, .14, .22, 'bandpass', 1600);
+      if (step % 2 === 1) noise(next, .03, .03, 'highpass', 9000);
+      const n = HS.lead[bar][step]; if (n) stab(next, n);
+      k = (k + 1) % 128; next += s16;
+    }
+  }, 25);
+  return { analyser: an, stop: () => {
+    clearInterval(timer);
+    bus.gain.setTargetAtTime(.0001, audio.currentTime, .05);
+    setTimeout(() => { try { bus.disconnect(); comp.disconnect(); an.disconnect(); drive.disconnect(); bassDrive.disconnect(); leadLp.disconnect(); } catch (e) {} }, 500);
+  } };
+}
+
+/* ---------- Jukebox: theme + saved songs ---------- */
+async function musicPlayer(cmd, url) {
+  const ov = $('musOv'), eq = $('eq'), title = $('mTitle'), srcEl = $('mSrc'), listEl = $('mList');
+  eq.innerHTML = '<i></i>'.repeat(24);
+  const bars = [...eq.children], drift = bars.map(() => .2);
+  const THEME = { theme: true, name: fill(cmd.lines[0] || 'BRACHIUM THEME') };
+  const st = { el: null, an: null, stop: () => {}, objUrl: null, t0: Date.now(), cur: 0 };
+  let entries = [THEME], dbOk = true;
+  ov.classList.add('on');
+  await sleep(OPEN_MS);   // let the corner brackets fly out first
+
+  async function refresh() {
+    try { entries = [THEME, ...(await SongDB.all())]; } catch (e) { dbOk = false; }
+    $('mStore').textContent = dbOk ? await storageText() : 'STORAGE OFFLINE';
+    drawList();
+  }
+  function drawList() {
+    listEl.innerHTML = '';
+    entries.forEach((en, n) => {
+      const row = document.createElement('div');
+      row.className = 'tr' + (n === st.cur ? ' on' : '');
+      row.innerHTML = `<span class="nm"></span>` + (en.theme ? '<span class="tag">BUILT-IN</span>' : '<button class="x">DELETE</button>');
+      row.querySelector('.nm').textContent = en.name;
+      row.onclick = () => { tone(900, .04); play(n); };
+      const x = row.querySelector('.x');
+      if (x) x.onclick = async e => {
+        e.stopPropagation();
+        if (!x.classList.contains('arm')) {            // first tap arms, second tap deletes
+          x.classList.add('arm'); x.textContent = 'CONFIRM';
+          setTimeout(() => { if (x.isConnected) { x.classList.remove('arm'); x.textContent = 'DELETE'; } }, 3000);
+          return;
+        }
+        if (n === st.cur) play(0);
+        await SongDB.del(en.id);
+        if (st.cur > n) st.cur--;
+        await refresh();
+      };
+      listEl.appendChild(row);
+    });
+  }
+  function stopCurrent() {
+    try { st.stop(); } catch (e) {}
+    if (st.objUrl) URL.revokeObjectURL(st.objUrl);
+    st.el = null; st.an = null; st.objUrl = null; st.stop = () => {};
+  }
+  async function play(n) {
+    stopCurrent();
+    st.cur = n; drawList();
+    const en = entries[n];
+    title.textContent = en.name;
+    if (en.theme) {
+      const t = startTheme(); st.an = t.analyser; st.stop = t.stop; st.t0 = Date.now();
+      srcEl.textContent = 'SOURCE: SYNTH CORE :: 145 BPM';
+      return true;
+    }
+    const el = new Audio(en.blob ? (st.objUrl = URL.createObjectURL(en.blob)) : en.url);
+    st.el = el;
+    if (en.blob) {               // local file: real spectrum
+      const an = audio.createAnalyser(), node = audio.createMediaElementSource(el);
+      an.fftSize = 64; an.smoothingTimeConstant = .75;
+      node.connect(an); an.connect(audio.destination);
+      st.an = an; st.stop = () => { el.pause(); node.disconnect(); an.disconnect(); };
+      srcEl.textContent = `SOURCE: STORAGE ${n}/${entries.length - 1}`;
+    } else {
+      st.stop = () => el.pause();
+      srcEl.textContent = 'SOURCE: EXTERNAL FILE';
+    }
+    el.onended = () => play((st.cur + 1) % entries.length);
+    try { await el.play(); return true; }
+    catch (e) { title.textContent = 'SIGNAL LOST: FILE UNREACHABLE'; return false; }
+  }
+
+  let finish; const done = new Promise(r => { finish = r; });
+  $('mStop').onclick = () => finish();
+  $('mNext').onclick = () => { tone(900, .04); play((st.cur + 1) % entries.length); };
+  $('mLoad').onclick = () => $('mFile').click();
+  $('mFile').onchange = async e => {
+    const files = [...e.target.files].filter(f => f.type.startsWith('audio') || /\.(mp3|m4a|aac|ogg|opus|wav|flac)$/i.test(f.name));
+    e.target.value = '';
+    if (!files.length) return;
+    const firstNew = entries.length;
+    if (dbOk) {
+      title.textContent = 'STORING ' + files.length + ' TRACK' + (files.length > 1 ? 'S' : '') + '...';
+      try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (err) {}
+      try {
+        for (const f of files) await SongDB.add(f.name.replace(/\.[^.]+$/, '').toUpperCase(), f);
+        await refresh();
+      } catch (err) { dbOk = false; }
+    }
+    if (!dbOk) {                 // storage blocked: still play them for this session
+      files.forEach(f => entries.push({ name: f.name.replace(/\.[^.]+$/, '').toUpperCase(), blob: f }));
+      $('mStore').textContent = 'STORAGE OFFLINE';
+      drawList();
+    }
+    play(firstNew);
+  };
+
+  await refresh();
+  if (url) { entries.splice(1, 0, { name: fill(cmd.lines[0] || 'EXTERNAL TRACK'), url }); if (!await play(1)) { await sleep(1500); play(0); } }
+  else await play(entries.length > 1 ? 1 : 0);     // saved songs first, theme if the library is empty
+
+  const buf = new Uint8Array(32);
+  let running = true;
+  (function frame() {
+    if (!running) return;
+    if (st.an) {
+      st.an.getByteFrequencyData(buf);
+      bars.forEach((b, n) => { b.style.height = (4 + buf[Math.floor(n * buf.length * .8 / bars.length)] / 255 * 96) + '%'; });
+    } else {
+      bars.forEach((b, n) => { drift[n] = Math.max(.05, Math.min(1, drift[n] + (Math.random() - .5) * .12)); b.style.height = (4 + drift[n] * 96) + '%'; });
+    }
+    const sec = Math.floor(st.el ? st.el.currentTime : (Date.now() - st.t0) / 1000);
+    $('mTime').textContent = String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
+    requestAnimationFrame(frame);
+  })();
+
+  await done;
+  running = false; stopCurrent();
+  tone(400, .1);
+  ov.classList.remove('on');
+}
+
+/* ---------- Running a command ---------- */
+async function run(cmd, btn) {
+  if (busy) return;
+  if (cmd.danger && armed !== btn) {          // danger buttons need a second tap
+    disarm(); armed = btn; btn.classList.add('armed');
+    btn.querySelector('.lbl').textContent = 'CONFIRM?';
+    tone(220, .2, 'sawtooth', .05); buzz([60, 40, 60]);
+    setTimeout(() => armed === btn && disarm(), 3000);
+    return;
+  }
+  disarm();
+  busy = true; btn.classList.add('run'); $('grid').classList.add('busy');
+  tone(660, .06); buzz(30);
+
+  await typeLine(`> EXEC ${cmd.label}`, 'sys', 5);
+  const result = fill(cmd.result);
+  const DEFAULT_FX = { 'SCAN AREA': 'radar', 'CHECK VITALS': 'bioscan', 'JUKEBOX': 'music' };
+  // Effect cell can carry an argument, e.g. "music https://example.com/song.mp3"
+  const [fxWord = '', ...fxArgs] = (cmd.effect || DEFAULT_FX[cmd.label] || '').trim().split(/\s+/);
+  const effect = fxWord.toLowerCase();
+
+  if (effect === 'music') {
+    await musicPlayer(cmd, fxArgs.join(' '));
+  } else if (effect === 'radar') {
+    await radarScan(cmd, result);
+  } else if (effect === 'bioscan') {
+    await bioScan(cmd, result);
+  } else {
+    const lines = cmd.lines.length ? cmd.lines : ['Processing'];
+    const step = cmd.duration / lines.length;
+    for (let i = 0; i < lines.length; i++) {
+      await typeLine('  ' + fill(lines[i]));
+      $('prog').style.width = ((i + 1) / lines.length * 100) + '%';
+      nudgeGauges();
+      await sleep(Math.max(150, step - 300));
+    }
+    tone(988, .08, 'square', .05); setTimeout(() => tone(1319, .14, 'square', .05), 90);
+    buzz([40, 30, 80]);
+  }
+
+  await typeLine(`[ ${result.split('|').map(x => x.trim()).join(' / ')} ]`, cmd.danger ? 'bad' : 'ok', 11);
+  document.body.classList.add('glitch');
+  setTimeout(() => document.body.classList.remove('glitch'), 400);
+
+  // Log to the sheet in the background; ignore failures.
+  sendLog(cmd.label, result);
+
+  await sleep(400);
+  $('prog').style.width = '0';
+  btn.classList.remove('run'); $('grid').classList.remove('busy');
+  busy = false;
+}
+function disarm() {
+  if (!armed) return;
+  armed.classList.remove('armed');
+  armed.querySelector('.lbl').textContent = armed.dataset.label;
+  armed = null;
+}
+
+/* ---------- Building the UI from config ---------- */
+function render() {
+  const showTabs = commands.length > 6;
+  if (!showTabs) activeGroup = 'ALL';
+  $('tabs').hidden = !showTabs;
+  $('tabs').innerHTML = '';
+  if (showTabs) {
+    ['ALL', ...new Set(commands.map(c => c.group))].forEach(g => {
+      const t = document.createElement('button');
+      t.className = 'tab' + (g === activeGroup ? ' on' : '');
+      t.textContent = g;
+      t.onclick = () => { activeGroup = g; tone(1200, .03); render(); };
+      $('tabs').appendChild(t);
+    });
+  }
+
+  $('grid').innerHTML = '';
+  commands.filter(c => activeGroup === 'ALL' || c.group === activeGroup).forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'cmd' + (c.danger ? ' danger' : '');
+    b.dataset.label = c.label;
+    const n = String(commands.indexOf(c) + 1).padStart(2, '0');
+    b.innerHTML = `<span class="code">CMD-${n} :: ${c.group}</span><span class="lbl"></span>` +
+                  `<small>${c.danger ? 'CAUTION: DOUBLE PRESS' : 'READY'}</small><i class="led"></i>`;
+    b.querySelector('.lbl').textContent = c.label;
+    b.onclick = () => run(c, b);
+    $('grid').appendChild(b);
+  });
+}
+
+function tick() {
+  const now = new Date();
+  $('clock').textContent = now.toLocaleTimeString('en-GB');
+  $('date').textContent = now.toLocaleDateString('en-GB',
+    { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase();
+}
+
+/* ---------- Themes ---------- */
+const THEMES = ['pip', 'amber', 'red'];
+function setTheme(t) {
+  if (!THEMES.includes(t)) t = 'pip';
+  document.body.dataset.theme = t;
+  $('themeBtn').textContent = t.toUpperCase();
+  try { localStorage.setItem('br-theme', t); } catch (e) {}
+}
+$('themeBtn').onclick = () => {
+  setTheme(THEMES[(THEMES.indexOf(document.body.dataset.theme) + 1) % THEMES.length]);
+  tone(500, .05); tone(750, .05);
+};
+try { setTheme(localStorage.getItem('br-theme') || 'pip'); } catch (e) {}
+
+/* ---------- Boot globe: rotating wireframe planet ----------
+   Points are spread evenly over a sphere (a Fibonacci spiral), rotated in 3D and
+   projected flat. Points facing you are bright, the far side is faint, and a fake
+   "landmass" pattern makes some regions denser so it reads as a planet. */
+function startGlobe() {
+  const cv = $('globe'), ctx = cv.getContext('2d'), css = getComputedStyle(document.body);
+  const FG = css.getPropertyValue('--fg').trim(), DIM = css.getPropertyValue('--dim').trim(), AC = css.getPropertyValue('--accent').trim();
+  const RED = css.getPropertyValue('--danger').trim();
+  const N = 650, pts = [];
+  for (let i = 0; i < N; i++) {
+    const y = 1 - 2 * (i + .5) / N, r = Math.sqrt(1 - y * y), th = i * 2.399963;
+    const lat = Math.asin(y), lon = th % (Math.PI * 2);
+    const land = Math.sin(3 * lon + 1.3) * Math.cos(2.2 * lat) + .6 * Math.sin(5 * lat + 2 * lon) + .35 * Math.cos(7 * lon - lat);
+    pts.push({ x: Math.cos(th) * r, y, z: Math.sin(th) * r, land: land > .55 });
+  }
+  const tilt = .38;
+  let rot = 0, last = performance.now(), live = true;
+  const DPR = Math.min(2, devicePixelRatio || 1);       // cap resolution: sharp enough, much cheaper
+  function size() { const w = cv.clientWidth || 300; cv.width = cv.height = Math.round(w * DPR); }
+  size(); addEventListener('resize', size);
+  function proj(x, y, z, R, c) {                       // spin around Y, then tilt toward the viewer
+    const x1 = x * Math.cos(rot) + z * Math.sin(rot), z1 = -x * Math.sin(rot) + z * Math.cos(rot);
+    const y2 = y * Math.cos(tilt) - z1 * Math.sin(tilt), z2 = y * Math.sin(tilt) + z1 * Math.cos(tilt);
+    return [c + x1 * R, c - y2 * R, z2];
+  }
+  function ring(R, c, f, color, w, dash) {             // draw a 3D circle as a projected path
+    ctx.beginPath();
+    for (let k = 0; k <= 96; k++) { const [x, y] = proj(...f(k / 96 * Math.PI * 2), R, c); k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.strokeStyle = color; ctx.lineWidth = w; ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]);
+  }
+  /* The header reticle rebuilt in 3D: the triangle becomes a pyramid (triangular base,
+     apex on top) spinning on its own axis, with the flat inner triangle counter-rotating
+     and the red core pulsing. Edges facing you glow; edges behind it are dim. */
+  function drawLogo(t, c, R) {
+    const r = R * .55, a = t * 1.1, tilt = .3;
+    const P3 = (x, y, z) => {
+      const x1 = x * Math.cos(a) + z * Math.sin(a), z1 = -x * Math.sin(a) + z * Math.cos(a);
+      const y2 = y * Math.cos(tilt) - z1 * Math.sin(tilt), z2 = y * Math.sin(tilt) + z1 * Math.cos(tilt);
+      const f = 3 * R / (3 * R - z2);
+      return [c + x1 * f, c - y2 * f, z2];
+    };
+    // Regular tetrahedron: all six edges the same length, centred on the core.
+    // Apex at height r, base one third of r below centre, base corners 2*sqrt(2)/3 * r out.
+    const apex = P3(0, r, 0), br = r * 2 * Math.SQRT2 / 3;
+    const base = [0, 1, 2].map(k => { const q = k * 2 * Math.PI / 3; return P3(Math.cos(q) * br, -r / 3, Math.sin(q) * br); });
+    const edges = [[apex, base[0]], [apex, base[1]], [apex, base[2]], [base[0], base[1]], [base[1], base[2]], [base[2], base[0]]];
+    const seg = (p, q, col, w, al) => {
+      ctx.globalAlpha = al; ctx.strokeStyle = col; ctx.lineWidth = w * DPR;
+      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+    };
+    ctx.setLineDash([9 * DPR, 6 * DPR]);                       // dashed ring, like the header logo
+    ctx.globalAlpha = .55; ctx.strokeStyle = DIM; ctx.lineWidth = 1.4 * DPR;
+    ctx.beginPath(); ctx.arc(c, c, r * 1.25, t * .4, t * .4 + Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    const depth = e => (e[0][2] + e[1][2]) / 2;
+    edges.filter(e => depth(e) < 0).forEach(e => seg(e[0], e[1], DIM, 1.4, .6));      // far edges
+    ctx.shadowColor = FG; ctx.shadowBlur = 10 * DPR;
+    edges.filter(e => depth(e) >= 0).forEach(e => seg(e[0], e[1], FG, 2.2, 1));       // near edges glow
+    ctx.shadowBlur = 0;
+    const it = [0, 1, 2].map(k => { const q = -Math.PI / 2 + k * 2 * Math.PI / 3 - t * 1.6; return [c + Math.cos(q) * r * .38, c + Math.sin(q) * r * .38]; });
+    [0, 1, 2].forEach(k => seg(it[k], it[(k + 1) % 3], AC, 1.6, .95));
+    const pr = (2.6 + 1.4 * Math.abs(Math.sin(t * 3))) * DPR;  // pulsing red core
+    ctx.globalAlpha = 1; ctx.fillStyle = RED; ctx.shadowColor = RED; ctx.shadowBlur = 12 * DPR;
+    ctx.beginPath(); ctx.arc(c, c, pr, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+  }
+  function frame(now) {
+    if (!live) return;
+    rot += (now - last) / 1000 * .35; last = now;
+    const W = cv.width, c = W / 2, R = W * .34;
+    ctx.clearRect(0, 0, W, W);
+    ctx.globalAlpha = .35;                                    // latitude and meridian grid
+    [-.6, 0, .6].forEach(la => ring(R, c, a => [Math.cos(a) * Math.cos(la), Math.sin(la), Math.sin(a) * Math.cos(la)], DIM, 1));
+    [0, 1, 2].forEach(m => ring(R, c, a => [Math.cos(a) * Math.cos(m * Math.PI / 3), Math.sin(a), Math.cos(a) * Math.sin(m * Math.PI / 3)], DIM, 1));
+    ctx.globalAlpha = 1;
+    // Far side of the planet first, then the logo, then the near side on top,
+    // so the BRACHIUM emblem looks like it hangs inside the globe.
+    const P2 = pts.map(p => proj(p.x, p.y, p.z, R, c));
+    const dots = front => pts.forEach((p, i) => {
+      const [x, y, z] = P2[i];
+      if ((z > 0) !== front) return;
+      const s = (p.land ? 1.9 : 1.1) * DPR;
+      ctx.globalAlpha = front ? (p.land ? .95 : .45) : .12;
+      ctx.fillStyle = p.land && front ? FG : DIM;
+      ctx.fillRect(x - s / 2, y - s / 2, s, s);
+    });
+    dots(false);
+    drawLogo(now / 1000, c, R);
+    dots(true);
+    ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.arc(c, c, R, 0, Math.PI * 2);        // planet rim glow
+    ctx.strokeStyle = FG; ctx.lineWidth = 1.5 * DPR;
+    ctx.shadowColor = FG; ctx.shadowBlur = 14; ctx.stroke(); ctx.shadowBlur = 0;
+    const oT = .55;                                           // tilted orbit with a satellite
+    ring(R * 1.32, c, a => [Math.cos(a), Math.sin(a) * Math.sin(oT), Math.sin(a) * Math.cos(oT)], DIM, 1, [4, 6]);
+    const sa = now / 1000 * .9, [sx, sy] = proj(Math.cos(sa), Math.sin(sa) * Math.sin(oT), Math.sin(sa) * Math.cos(oT), R * 1.32, c);
+    ctx.fillStyle = AC; ctx.shadowColor = AC; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(sx, sy, 3 * DPR, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+    const sw = (now / 1000 * 1.2) % 2 - 1;                    // scan line sweeping the planet
+    if (Math.abs(sw) < .98) {
+      const yy = c - sw * R, hw = Math.sqrt(1 - sw * sw) * R;
+      ctx.strokeStyle = AC; ctx.globalAlpha = .6; ctx.lineWidth = 1.2 * DPR;
+      ctx.beginPath(); ctx.moveTo(c - hw, yy); ctx.lineTo(c + hw, yy); ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    const br = W * .06, m = W * .04;                          // targeting corners
+    ctx.strokeStyle = DIM; ctx.lineWidth = 2 * DPR;
+    [[m, m, 1, 1], [W - m, m, -1, 1], [m, W - m, 1, -1], [W - m, W - m, -1, -1]].forEach(([x, y, dx, dy]) => {
+      ctx.beginPath(); ctx.moveTo(x, y + dy * br); ctx.lineTo(x, y); ctx.lineTo(x + dx * br, y); ctx.stroke();
+    });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  return () => { live = false; };
+}
+let stopGlobe = () => {};
+try { stopGlobe = startGlobe(); } catch (e) { console.error(e); const g = $('globe'); if (g) g.remove(); }
+
+/* ---------- Boot sequence ---------- */
+const BOOT = ['BIOS CHECK ........ OK', 'CALIBRATING SERVOS', 'PRESSURISING HYDRAULICS', 'HANDSHAKE WITH DATASTORE',
+              'DNA SIGNATURE ..... IDENTIFIED', 'USER .............. CAPTAIN SAGRES', 'NEURO-SYNC ........ SUCCESSFUL'];
+(async () => {
+  for (let i = 0; i < BOOT.length; i++) {
+    if (i === 4) await sleep(600);                       // brief "scanning the user" pause
+    const d = document.createElement('div');
+    d.textContent = BOOT[i];
+    if (i >= 4) d.style.color = 'var(--accent)';          // identity lines stand out
+    $('bootLog').appendChild(d);
+    await sleep(i >= 4 ? 420 : 220);
+  }
+})();
+
+function loadConfig() {
+  return new Promise(async resolve => {
+    if (window.google && google.script) {             /* running inside Apps Script (old setup) */
+      google.script.run
+        .withSuccessHandler(list => resolve({ list: list.length ? list : FALLBACK, offline: !list.length }))
+        .withFailureHandler(err => resolve({ list: FALLBACK, offline: true, err }))
+        .getConfig();
+      return;
+    }
+    let saved = null;                                  /* last commands received, kept for offline use */
+    try { saved = JSON.parse(localStorage.getItem('br-commands') || 'null'); } catch (e) {}
+    if (!CONFIG.sheetUrl) return resolve({ list: saved || FALLBACK, offline: true, saved: !!saved });
+    try {
+      const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 8000);
+      const res = await fetch(CONFIG.sheetUrl + '?api=config&key=' + encodeURIComponent(CONFIG.apiKey), { signal: ctrl.signal });
+      clearTimeout(timer);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'datastore refused the request');
+      try { localStorage.setItem('br-commands', JSON.stringify(data.commands)); } catch (e) {}
+      resolve({ list: data.commands.length ? data.commands : FALLBACK, offline: !data.commands.length });
+    } catch (err) {
+      resolve({ list: saved || FALLBACK, offline: true, saved: !!saved, err });
+    }
+  });
+}
+function sendLog(label, result) {
+  if (window.google && google.script) return google.script.run.logCommand(label, result);
+  if (!CONFIG.sheetUrl) return;
+  const q = '?api=log&key=' + encodeURIComponent(CONFIG.apiKey) +
+            '&label=' + encodeURIComponent(label) + '&result=' + encodeURIComponent(result);
+  fetch(CONFIG.sheetUrl + q, { mode: 'no-cors', keepalive: true }).catch(() => {});
+}
+$('osver').textContent = 'OS ' + VERSION + '-B' + BUILD;
+if ('serviceWorker' in navigator && !(window.google && google.script) && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service worker not registered', e));
+}
+const configReady = loadConfig();   // starts fetching during the boot animation
+
+$('boot').addEventListener('click', async () => {
+  // Browsers only allow sound after a tap, which is why boot waits for one.
+  try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+  tone(440, .08); setTimeout(() => tone(880, .12), 100); buzz(50);
+  $('boot').classList.add('gone');
+  setTimeout(stopGlobe, 600);
+
+  buildGauges(); tick();
+  const realBattery = await hookBattery();
+  setInterval(tick, 1000);
+  setInterval(() => nudgeGauges(false), 1200);
+  setInterval(drawGlyphs, 2400);
+
+  const { list, offline, err, saved } = await configReady;
+  commands = list;
+  render();
+
+  await typeLine('BRACHIUM ONLINE. WELCOME BACK, CAPTAIN.', 'ok');
+  if (offline) await typeLine(
+    saved ? 'Datastore offline: using saved commands.'
+          : err ? `Datastore unreachable: ${err.message}` : 'Offline mode: built-in commands loaded.', 'bad');
+  else await typeLine(`${commands.length} commands loaded from datastore.`, 'sys');
+  if (realBattery) await typeLine('Power cell linked to device battery.', 'sys');
+}, { once: true });
+</script>
+</body>
+</html>
