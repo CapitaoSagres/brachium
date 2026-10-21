@@ -187,6 +187,7 @@
            animation: sweep 1.4s linear infinite; }
   .sweep::after { content: ""; position: absolute; left: 50%; top: 0; width: 2px; height: 50%; background: var(--fg); }
   @keyframes sweep { to { transform: rotate(360deg); } }
+  .rlogo { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   .radar.done .sweep { animation-play-state: paused; opacity: .25; }
   .rblip { position: absolute; width: 8px; height: 8px; margin: -4px; border-radius: 50%;
            background: var(--fg); box-shadow: 0 0 8px var(--fg); animation: fade 1.4s linear forwards; }
@@ -292,6 +293,73 @@
         color: color-mix(in srgb, var(--w) 35%, #fff); text-shadow: 0 0 6px var(--w), 0 0 18px var(--w); }
   .alert.on .bh, .alert.on .bt { animation: holoText 1.2s steps(1) infinite; }
   @keyframes holoText { 50% { opacity: .3; text-shadow: none; } }
+
+  /* ---------- Multi-line results: a medical diagnostic readout ----------
+     A cut-corner panel in the same language as the gauges: a header strip, one row per
+     result with a segmented meter that fills and a percentage that counts up, a heartbeat
+     trace, and a blinking overall verdict. */
+  .alert .a1, .alert .a2 { display: none; }
+  .alert:not(.report-mode) .rep { display: none; }
+  .rep { --c: var(--danger); width: min(94vw, 600px); max-height: 92vh; overflow: hidden; text-align: left;
+         font-family: 'Share Tech Mono', monospace; color: var(--accent);
+         border: 1px solid color-mix(in srgb, var(--c) 70%, transparent);
+         background:
+           linear-gradient(color-mix(in srgb, var(--fg) 6%, transparent) 1px, transparent 1px) 0 0 / 100% 14px,
+           linear-gradient(90deg, color-mix(in srgb, var(--fg) 6%, transparent) 1px, transparent 1px) 0 0 / 14px 100%,
+           color-mix(in srgb, var(--faint) 45%, var(--bg));
+         clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px)); }
+  .alert.on .rep { animation: projectIn .35s cubic-bezier(.2, .9, .3, 1.2) both; }
+  .rep-hd { display: flex; align-items: center; gap: 10px; padding: 6px 22px 6px 12px;
+            background: var(--c); color: var(--bg); text-shadow: none; }
+  .rep-led { width: 10px; height: 10px; background: var(--bg); flex-shrink: 0; animation: blink .6s steps(1) infinite; }
+  .rep-t { font-family: 'VT323', monospace; font-size: clamp(20px, min(5.6vw, 7vh), 34px); letter-spacing: 2px; line-height: 1; flex: 1;
+           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rep-id { font-size: 11px; letter-spacing: 1px; opacity: .8; white-space: nowrap; }
+  .rep-sub { display: flex; justify-content: space-between; gap: 8px; padding: 6px 12px 2px; font-size: 10px;
+             letter-spacing: 1.5px; color: var(--dim); }
+  .rep-rows { padding: 4px 12px 2px; }
+  .rr { padding: min(1.6vh, 9px) 0; border-bottom: 1px dashed color-mix(in srgb, var(--fg) 18%, transparent); }
+  .rr-top { display: flex; align-items: baseline; gap: 8px; }
+  .rr-l { font-family: 'VT323', monospace; font-size: clamp(17px, min(4.8vw, 5.4vh), 26px); letter-spacing: 1.5px; color: var(--accent); }
+  .rr-dots { flex: 1; border-bottom: 1px dotted var(--dim); transform: translateY(-4px); }
+  .rr-s { font-family: 'VT323', monospace; font-size: clamp(19px, min(5.4vw, 6vh), 30px); letter-spacing: 2px; color: var(--c);
+          text-shadow: 0 0 8px var(--c); }
+  .rr-meter { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+  .rr-bar { position: relative; flex: 1; height: 12px; background: color-mix(in srgb, var(--c) 12%, transparent); }
+  .rr-bar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--c);
+              transition: width .7s cubic-bezier(.2, .8, .3, 1); box-shadow: 0 0 8px var(--c); }
+  .rr-bar::after { content: ""; position: absolute; inset: 0;                         /* segment gaps */
+                   background: repeating-linear-gradient(90deg, transparent 0 9px, var(--bg) 9px 11px); }
+  .rr-p { width: 4ch; text-align: right; font-size: 12px; color: var(--accent); font-variant-numeric: tabular-nums; }
+  /* Contact report (single-line results like SCAN AREA): a big hazard-framed headline + stats */
+  .rep-big { position: relative; margin: 8px 12px 4px; padding: 16px 8px; text-align: center;
+             font-family: 'VT323', monospace; font-size: clamp(30px, min(9vw, 10vh), 62px); line-height: .95;
+             letter-spacing: 2px; color: color-mix(in srgb, var(--c) 40%, #fff);
+             text-shadow: 0 0 6px var(--c), 0 0 18px var(--c);
+             background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--c) 14%, transparent) 0 14px, transparent 14px 28px); }
+  .rep-big::before, .rep-big::after { content: ""; position: absolute; left: 0; right: 0; height: 7px;
+             background: repeating-linear-gradient(-45deg, var(--lvl-mid) 0 8px, transparent 8px 16px); }
+  .rep-big::before { top: 0; } .rep-big::after { bottom: 0; }
+  .alert.on .rep-big { animation: triPulse 1.2s ease-in-out infinite; }
+  .rep-warn { animation: lineIn .25s steps(3); }
+  .rw-a { font-family: 'VT323', monospace; font-size: clamp(26px, min(7.5vw, 8.5vh), 46px); letter-spacing: 5px;
+          text-align: center; color: var(--c); text-shadow: 0 0 10px var(--c); margin: 6px 0 2px;
+          border: 1px solid color-mix(in srgb, var(--c) 60%, transparent); padding: 4px 0; }
+  .alert.on .rw-a { animation: holoText 1.2s steps(1) infinite; }
+  .rep.no-ft .rep-ft { display: none; }
+  @media (max-width: 440px) {          /* narrow portrait: drop the extras so the title fits */
+    .rep-id, .rep-sub .wide { display: none; }
+  }
+  .rep-ecg { display: block; width: 100%; height: 18px; margin: 6px 0 0; }
+  .rep-ecg path { fill: none; stroke: var(--c); stroke-width: 1.4; vector-effect: non-scaling-stroke;
+                  stroke-dasharray: 260; stroke-dashoffset: 260; }
+  .alert.on .rep-ecg path { animation: ecgDraw 1.6s linear infinite; }
+  @keyframes ecgDraw { to { stroke-dashoffset: -260; } }
+  .rep-ft { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 2px 8px; padding: 8px 22px 10px 12px;
+            border-top: 1px solid color-mix(in srgb, var(--c) 40%, transparent); font-size: 11px; letter-spacing: 2px; color: var(--dim); }
+  .rep-ft b { font-family: 'VT323', monospace; font-weight: 400; font-size: clamp(22px, min(6vw, 7vh), 36px); letter-spacing: 3px;
+              color: var(--c); text-shadow: 0 0 10px var(--c); opacity: 0; }
+  .rep-ft b.on { opacity: 1; animation: holoText 1.2s steps(1) infinite; }
 
   /* Multi-line reports stay steady and appear one line at a time */
   .alert .a2.report { font-size: clamp(22px, 6.2vw, 50px); line-height: 1.15; letter-spacing: 2px;
@@ -400,7 +468,7 @@
 <body data-theme="pip">
 
 <div id="boot">
-  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B14</span></div>
+  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B18</span></div>
   <div id="bootLog"></div>
   <canvas id="globe" aria-hidden="true"></canvas>
   <div class="tap">[ INITIATE SYSTEM ]</div>
@@ -441,7 +509,7 @@
 
 <div class="radar-ov" id="radarOv">
   <div class="hud-line"><span>SECTOR SWEEP</span><span id="rBearing">BRG 000°</span></div>
-  <div class="radar" id="rField"><div class="sweep"></div></div>
+  <div class="radar" id="rField"><div class="sweep"></div><canvas class="rlogo" id="rLogo"></canvas></div>
   <div class="rs" id="rStatus"></div>
   <div class="hud-line"><span id="rRange">RNG 0000M</span><span id="rContacts">CONTACTS 00</span></div>
 </div>
@@ -509,6 +577,17 @@
     </div>
     <div class="hz"></div>
   </div>
+  <div class="rep" id="rRep">
+    <div class="rep-hd">
+      <span class="rep-led"></span><span class="rep-t" id="rRepT"></span><span class="rep-id" id="rRepId"></span>
+    </div>
+    <div class="rep-sub"><span id="rRepS"></span><span id="rRepN"></span></div>
+    <div class="rep-rows" id="rRepRows"></div>
+    <svg class="rep-ecg" viewBox="0 0 200 20" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 10 H70 L74 6 L78 10 L84 10 L87 13 L91 1 L95 18 L98 10 L106 10 Q112 4 118 10 H200"/>
+    </svg>
+    <div class="rep-ft"><span id="rRepFL"></span><b id="rRepV"></b></div>
+  </div>
   <div class="a1" id="rA1"></div><div class="a2" id="rA2"></div>
 </div>
 
@@ -520,7 +599,7 @@ const CONFIG = {
   sheetUrl: 'https://script.google.com/macros/s/AKfycbxZGZteYUqlIQaBmvQ6z2HRrNb67AZkOI_oRpesJl-EApOKii0mQiqHVDqWoM2oiYvdeg/exec',   /* your Apps Script web app URL (ends in /exec); leave empty to run on built-in commands */
   apiKey: 'if-you--like-pina-colada'      /* must match API_KEY in Code.gs */
 };
-const VERSION = 'v2.7', BUILD = 14;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
+const VERSION = 'v2.7', BUILD = 18;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
 
 /* ======================================================
    Fallback commands — used if the sheet can't be reached
@@ -820,6 +899,67 @@ async function typeLine(text, cls = '', speed = 14) {
   d.classList.remove('cursor');
 }
 
+/* ---------- Radar artwork: bearing ring + BRACHIUM pyramid as "own ship" ----------
+   Drawn on a canvas over the sweep: degree ticks round the rim with 000/090/180/270
+   labels, a triangular range marker, and the logo pyramid spinning at the centre. */
+function startRadarArt() {
+  const cv = $('rLogo'), ctx = cv.getContext('2d'), css = getComputedStyle(document.body);
+  const FG = css.getPropertyValue('--fg').trim(), DIM = css.getPropertyValue('--dim').trim();
+  const AC = css.getPropertyValue('--accent').trim(), RED = css.getPropertyValue('--danger').trim();
+  const DPR = Math.min(2, devicePixelRatio || 1);
+  const W = cv.width = cv.height = Math.max(200, Math.round(cv.clientWidth * DPR));
+  const c = W / 2, R = W / 2;
+  let live = true;
+  const line = (x1, y1, x2, y2, col, w, a) => {
+    ctx.globalAlpha = a; ctx.strokeStyle = col; ctx.lineWidth = w * DPR;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  };
+  function frame(now) {
+    if (!live) return;
+    const t = now / 1000;
+    ctx.clearRect(0, 0, W, W);
+    for (let deg = 0; deg < 360; deg += 5) {                      // bearing ticks
+      const a = (deg - 90) * Math.PI / 180, major = deg % 30 === 0, len = (major ? .08 : .035) * R;
+      line(c + Math.cos(a) * (R - 2), c + Math.sin(a) * (R - 2), c + Math.cos(a) * (R - len), c + Math.sin(a) * (R - len),
+           major ? FG : DIM, major ? 1.6 : 1, major ? .9 : .55);
+    }
+    ctx.globalAlpha = .8; ctx.fillStyle = FG; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `${Math.round(R * .085)}px VT323, monospace`;
+    [['000', 0], ['090', 90], ['180', 180], ['270', 270]].forEach(([s, d]) => {
+      const a = (d - 90) * Math.PI / 180;
+      ctx.fillText(s, c + Math.cos(a) * R * .8, c + Math.sin(a) * R * .8);
+    });
+    const tr = R * .5, ta = t * .25;                              // slow triangular range marker
+    ctx.setLineDash([5 * DPR, 7 * DPR]);
+    ctx.beginPath();
+    for (let k = 0; k <= 3; k++) {
+      const a = ta - Math.PI / 2 + k * 2 * Math.PI / 3;
+      k ? ctx.lineTo(c + Math.cos(a) * tr, c + Math.sin(a) * tr) : ctx.moveTo(c + Math.cos(a) * tr, c + Math.sin(a) * tr);
+    }
+    ctx.globalAlpha = .45; ctx.strokeStyle = DIM; ctx.lineWidth = 1.2 * DPR; ctx.stroke(); ctx.setLineDash([]);
+    // the BRACHIUM pyramid (regular tetrahedron) spinning at the centre
+    const r = R * .17, spin = t * 1.1, tilt = .3;
+    const P = (x, y, z) => {
+      const x1 = x * Math.cos(spin) + z * Math.sin(spin), z1 = -x * Math.sin(spin) + z * Math.cos(spin);
+      const y2 = y * Math.cos(tilt) - z1 * Math.sin(tilt), z2 = y * Math.sin(tilt) + z1 * Math.cos(tilt);
+      return [c + x1, c - y2, z2];
+    };
+    const br = r * 2 * Math.SQRT2 / 3, apex = P(0, r, 0);
+    const base = [0, 1, 2].map(k => { const q = k * 2 * Math.PI / 3; return P(Math.cos(q) * br, -r / 3, Math.sin(q) * br); });
+    const edges = [[apex, base[0]], [apex, base[1]], [apex, base[2]], [base[0], base[1]], [base[1], base[2]], [base[2], base[0]]];
+    edges.forEach(([p, q]) => { if ((p[2] + q[2]) / 2 < 0) line(p[0], p[1], q[0], q[1], DIM, 1.2, .7); });
+    ctx.shadowColor = FG; ctx.shadowBlur = 8 * DPR;
+    edges.forEach(([p, q]) => { if ((p[2] + q[2]) / 2 >= 0) line(p[0], p[1], q[0], q[1], FG, 1.8, 1); });
+    ctx.shadowBlur = 0;
+    const pr = (1.8 + 1.2 * Math.abs(Math.sin(t * 3))) * DPR;    // pulsing red core
+    ctx.globalAlpha = 1; ctx.fillStyle = RED; ctx.shadowColor = RED; ctx.shadowBlur = 10 * DPR;
+    ctx.beginPath(); ctx.arc(c, c, pr, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  return () => { live = false; };
+}
+
 /* ---------- Radar scan effect (fullscreen) ---------- */
 function addBlip(field, target) {
   const b = document.createElement('div'), a = Math.random() * Math.PI * 2;
@@ -829,6 +969,7 @@ function addBlip(field, target) {
   b.style.top  = (50 + Math.sin(a) * d) + '%';
   field.appendChild(b);
   if (!target) setTimeout(() => b.remove(), 1400);
+  return { a, d };   /* angle and distance, so the report can quote the real bearing and range */
 }
 async function radarScan(cmd, result) {
   const ov = $('radarOv'), field = $('rField'), st = $('rStatus'), al = $('rAlert');
@@ -837,6 +978,7 @@ async function radarScan(cmd, result) {
   ov.classList.remove('alerting'); al.classList.remove('on');
   ov.classList.add('on');
   await sleep(OPEN_MS);   // let the corner brackets fly out first
+  const stopArt = startRadarArt();
 
   const t0 = Date.now(); let contacts = 0;
   const hud = setInterval(() => {
@@ -862,6 +1004,7 @@ async function radarScan(cmd, result) {
   field.classList.add('done');
   addBlip(field, true);
   await showAlert(result, ov, 'denied');
+  setTimeout(stopArt, 400);
 }
 
 /* ---------- Bioscan effect (fullscreen, head to toes) ---------- */
@@ -1030,7 +1173,26 @@ async function showAlert(result, ov, sound) {
   $('rA1').textContent = head;
   a2.className = 'a2 ' + (multi ? 'report' : 'single');
   a2.textContent = multi ? '' : (lines[0] || '');
-  al.classList.toggle('banner-mode', !multi);           // single line -> hazard banner
+  // Every result uses the readout panel: a diagnostic summary for several lines,
+  // a contact report (big headline + stats) for a single line.
+  al.classList.remove('banner-mode');
+  al.classList.add('report-mode');
+  $('rRepT').textContent = head.replace(/:$/, '');
+  $('rRepId').textContent = new Date().toLocaleTimeString('en-GB');
+  $('rRepS').innerHTML = multi ? 'SUBJECT 01<span class="wide"> // DIAGNOSTIC SUMMARY</span>'
+                               : 'SECTOR SWEEP<span class="wide"> // CONTACT REPORT</span>';
+  $('rRepN').textContent = multi ? (lines.length < 10 ? '0' : '') + lines.length + ' FINDINGS' : '01 CONTACT';
+  $('rRepFL').textContent = 'OVERALL CONDITION';
+  $('rRepV').textContent = 'CRITICAL';
+  $('rRep').classList.toggle('no-ft', !multi);          /* the contact report has no footer */
+  $('rRepV').classList.remove('on');
+  $('rRepRows').innerHTML = '';
+  if (!multi) {
+    const big = document.createElement('div');
+    big.className = 'rep-big';
+    big.textContent = lines[0] || '';
+    $('rRepRows').appendChild(big);
+  }
   st.textContent = '';
   $('rBH').textContent = head;
   $('rBT').textContent = multi ? '' : (lines[0] || '');
@@ -1039,17 +1201,47 @@ async function showAlert(result, ov, sound) {
   const revealLen = playReveal(sound);   // seconds the reveal sound lasts
   buzz([200, 100, 200, 100, 400]);
 
-  if (multi) {
-    await sleep(Math.max(700, (revealLen + .2) * 1000));   // let the reveal sound finish before the first line beeps
-    for (const l of lines) {
-      const d = document.createElement('div'); d.textContent = l; a2.appendChild(d);
+  const addRow = l => {
+      // "BRAIN ACTIVITY - LOW (12%)" -> label, status word, percentage
+      const m = l.match(/^(.*?)\s+-\s+(.*?)\s*(?:\((\d+)%\))?$/) || [null, l, '', null];
+      const pct = m[3] == null ? null : Math.max(0, Math.min(100, +m[3]));
+      const row = document.createElement('div');
+      row.className = 'rr';
+      row.innerHTML = '<div class="rr-top"><span class="rr-l"></span><span class="rr-dots"></span><span class="rr-s"></span></div>' +
+                      (pct == null ? '' : '<div class="rr-meter"><div class="rr-bar"><i></i></div><span class="rr-p">0%</span></div>');
+      row.querySelector('.rr-l').textContent = m[1];
+      row.querySelector('.rr-s').textContent = m[2];
+      $('rRepRows').appendChild(row);
       tone(1100, .06, 'square', .05);
-      await sleep(650);
-    }
-    await sleep(3200);
+      if (pct != null) {
+        const bar = row.querySelector('.rr-bar i'), num = row.querySelector('.rr-p');
+        requestAnimationFrame(() => { bar.style.width = pct + '%'; });
+        const t0 = performance.now();
+        (function count(now) {                                // percentage counts up with the bar
+          const k = Math.min(1, (now - t0) / 700);
+          num.textContent = Math.round(pct * (1 - Math.pow(1 - k, 3))) + '%';
+          if (k < 1) requestAnimationFrame(count);
+        })(t0);
+      }
+  };
+
+  await sleep(Math.max(700, (revealLen + .2) * 1000));     // let the reveal sound finish before the first row beeps
+  if (multi) {
+    for (const l of lines) { addRow(l); await sleep(750); }
   } else {
-    await sleep(3600);
+    // Contact report: class, level, then a blinking engagement warning, one at a time
+    const put = (cls, html) => {
+      const d = document.createElement('div'); d.className = cls; d.innerHTML = html;
+      $('rRepRows').appendChild(d);
+    };
+    const field = (label, value) =>
+      `<div class="rr-top"><span class="rr-l">${label}</span><span class="rr-dots"></span><span class="rr-s">${value}</span></div>`;
+    put('rr rep-warn', field('CLASS', 'TRASHY'));  tone(1100, .06, 'square', .05); await sleep(500);
+    put('rr rep-warn', field('LEVEL', 'LOW'));     tone(1100, .06, 'square', .05); await sleep(500);
+    put('rep-warn', '<div class="rw-a">DO NOT ENGAGE</div>'); tone(520, .18, 'square', .06); await sleep(700);
   }
+  if (multi) { $('rRepV').classList.add('on'); tone(440, .25, 'square', .05); }   /* verdict only on the vitals report */
+  await sleep(3400);
 
   ov.classList.remove('on'); al.classList.remove('on');
   await sleep(300);
