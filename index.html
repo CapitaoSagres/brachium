@@ -207,6 +207,13 @@
   .bio .vol.lit { fill: var(--fg); opacity: .12; }
   .bio .mesh { stroke: var(--dim); stroke-width: .4; opacity: .8; }
   .bio .mesh.lit { stroke: var(--fg); stroke-width: .45; opacity: 1; }
+  .bio .cone { fill: var(--fg); opacity: .045; }
+  .bio .cone-edge { stroke: var(--dim); stroke-width: .5; stroke-dasharray: 2 3; opacity: .7; }
+  .bio .pad { fill: none; stroke: var(--dim); stroke-width: .6; stroke-dasharray: 3 2; }
+  .bio #emit line { stroke-linecap: round; }
+  .bio #emit .bk { stroke: var(--dim); stroke-width: .8; }
+  .bio #emit .fr { stroke: var(--fg); stroke-width: 1.3; }
+  .bio #emit circle { fill: var(--danger); }
   .bio .organs { fill: var(--fg); fill-opacity: .08; stroke: var(--accent); stroke-width: .45; stroke-opacity: .55; }
   .bio .g0 { stop-color: var(--fg); stop-opacity: 0; }
   .bio .g1 { stop-color: var(--fg); stop-opacity: .45; }
@@ -231,6 +238,8 @@
   .eq i { flex: 1; height: 4%; background: var(--fg); border-top: 3px solid var(--accent);
           clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
   .rs.mtitle { animation: none; }
+  .eqwrap { position: relative; flex-shrink: 0; }
+  .eqlogo { position: absolute; top: 0; left: 50%; height: 100%; aspect-ratio: 1; transform: translateX(-50%); pointer-events: none; }
   #musOv { overflow-y: auto; justify-content: safe center; gap: 12px; }
   .mlist { width: min(92vw, 460px); max-height: min(24vh, 200px); overflow-y: auto; flex-shrink: 0;
            border: 1px solid var(--dim); }
@@ -468,7 +477,7 @@
 <body data-theme="pip">
 
 <div id="boot">
-  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B18</span></div>
+  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B19</span></div>
   <div id="bootLog"></div>
   <canvas id="globe" aria-hidden="true"></canvas>
   <div class="tap">[ INITIATE SYSTEM ]</div>
@@ -516,7 +525,7 @@
 
 <div class="radar-ov" id="bioOv">
   <div class="hud-line"><span>BIOSCAN // SUBJECT 01</span><span id="bPct">SCAN 000%</span></div>
-  <svg class="bio" viewBox="-54 -6 212 232" aria-hidden="true">
+  <svg class="bio" viewBox="-54 -6 212 260" aria-hidden="true">
     <defs>
       <linearGradient id="band" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g0"/><stop offset="1" class="g1"/></linearGradient>
       <clipPath id="scanClip"><rect id="scanRect" x="-80" y="-6" width="260" height="0"/></clipPath>
@@ -533,6 +542,9 @@
       </filter>
     </defs>
     <!-- unscanned: faint volume + dim contour mesh -->
+    <polygon class="cone" points="50,223 6,-2 94,-2"/>
+    <line class="cone-edge" x1="50" y1="223" x2="6" y2="-2"/><line class="cone-edge" x1="50" y1="223" x2="94" y2="-2"/>
+    <ellipse class="pad" cx="50" cy="243" rx="32" ry="6"/>
     <use href="#bodyPath" class="vol"/>
     <use href="#meshPath" clip-path="url(#bodyClip)" class="mesh"/>
     <use href="#detailFig" style="stroke: var(--dim)"/>
@@ -546,6 +558,7 @@
       <path class="heart" d="M51.2 57.6 C54.6 55.6 59 57.4 58.7 61.4 C58.4 65.4 55 68.2 52.6 69.6 C51.2 67.4 50.4 63.6 50.6 60.2 C50.7 59 50.9 58.2 51.2 57.6Z"/>
     </g>
     <g id="marks"></g>
+    <g id="emit"></g>
     <rect id="scanBand" x="-20" y="-20" width="140" height="16" fill="url(#band)"/>
     <line id="scanLine" class="sl" x1="-24" x2="124" y1="0" y2="0"/>
   </svg>
@@ -555,7 +568,7 @@
 
 <div class="radar-ov" id="musOv">
   <div class="hud-line"><span>AUDIO LINK // CH 01</span><span id="mTime">00:00</span></div>
-  <div class="eq" id="eq"></div>
+  <div class="eqwrap"><div class="eq" id="eq"></div><canvas class="eqlogo" id="eqLogo"></canvas></div>
   <div class="rs mtitle" id="mTitle"></div>
   <div class="mlist" id="mList"></div>
   <div class="mbtns">
@@ -599,7 +612,7 @@ const CONFIG = {
   sheetUrl: 'https://script.google.com/macros/s/AKfycbxZGZteYUqlIQaBmvQ6z2HRrNb67AZkOI_oRpesJl-EApOKii0mQiqHVDqWoM2oiYvdeg/exec',   /* your Apps Script web app URL (ends in /exec); leave empty to run on built-in commands */
   apiKey: 'if-you--like-pina-colada'      /* must match API_KEY in Code.gs */
 };
-const VERSION = 'v2.7', BUILD = 18;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
+const VERSION = 'v2.7', BUILD = 19;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
 
 /* ======================================================
    Fallback commands — used if the sheet can't be reached
@@ -899,6 +912,39 @@ async function typeLine(text, cls = '', speed = 14) {
   d.classList.remove('cursor');
 }
 
+/* ---------- The BRACHIUM pyramid, reusable ----------
+   A regular tetrahedron (all edges equal) spinning around its vertical axis: back edges
+   dim, front edges glowing, red core pulsing. Used by the radar, bioscan and jukebox. */
+function pyramidEdges(cx, cy, r, spin, tilt) {
+  const P = (x, y, z) => {
+    const x1 = x * Math.cos(spin) + z * Math.sin(spin), z1 = -x * Math.sin(spin) + z * Math.cos(spin);
+    const y2 = y * Math.cos(tilt) - z1 * Math.sin(tilt), z2 = y * Math.sin(tilt) + z1 * Math.cos(tilt);
+    return [cx + x1, cy - y2, z2];
+  };
+  const br = r * 2 * Math.SQRT2 / 3, apex = P(0, r, 0);
+  const base = [0, 1, 2].map(k => { const q = k * 2 * Math.PI / 3; return P(Math.cos(q) * br, -r / 3, Math.sin(q) * br); });
+  return [[apex, base[0]], [apex, base[1]], [apex, base[2]], [base[0], base[1]], [base[1], base[2]], [base[2], base[0]]]
+    .map(([p, q]) => ({ p, q, front: (p[2] + q[2]) / 2 >= 0 }));
+}
+function drawPyramid(ctx, cx, cy, r, t, C, DPR, core = 1) {
+  const line = (p, q, col, w, a) => {
+    ctx.globalAlpha = a; ctx.strokeStyle = col; ctx.lineWidth = w * DPR;
+    ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+  };
+  const edges = pyramidEdges(cx, cy, r, t * 1.1, .3);
+  edges.filter(e => !e.front).forEach(e => line(e.p, e.q, C.dim, 1.2, .7));
+  ctx.shadowColor = C.fg; ctx.shadowBlur = 8 * DPR;
+  edges.filter(e => e.front).forEach(e => line(e.p, e.q, C.fg, 1.8, 1));
+  ctx.shadowBlur = 0;
+  const pr = (1.8 + 1.2 * Math.abs(Math.sin(t * 3))) * DPR * core;
+  ctx.globalAlpha = 1; ctx.fillStyle = C.red; ctx.shadowColor = C.red; ctx.shadowBlur = 10 * DPR;
+  ctx.beginPath(); ctx.arc(cx, cy, pr, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+}
+const themeColors = () => {
+  const css = getComputedStyle(document.body), v = n => css.getPropertyValue(n).trim();
+  return { fg: v('--fg'), dim: v('--dim'), red: v('--danger'), bg: v('--bg') };
+};
+
 /* ---------- Radar artwork: bearing ring + BRACHIUM pyramid as "own ship" ----------
    Drawn on a canvas over the sweep: degree ticks round the rim with 000/090/180/270
    labels, a triangular range marker, and the logo pyramid spinning at the centre. */
@@ -937,23 +983,7 @@ function startRadarArt() {
       k ? ctx.lineTo(c + Math.cos(a) * tr, c + Math.sin(a) * tr) : ctx.moveTo(c + Math.cos(a) * tr, c + Math.sin(a) * tr);
     }
     ctx.globalAlpha = .45; ctx.strokeStyle = DIM; ctx.lineWidth = 1.2 * DPR; ctx.stroke(); ctx.setLineDash([]);
-    // the BRACHIUM pyramid (regular tetrahedron) spinning at the centre
-    const r = R * .17, spin = t * 1.1, tilt = .3;
-    const P = (x, y, z) => {
-      const x1 = x * Math.cos(spin) + z * Math.sin(spin), z1 = -x * Math.sin(spin) + z * Math.cos(spin);
-      const y2 = y * Math.cos(tilt) - z1 * Math.sin(tilt), z2 = y * Math.sin(tilt) + z1 * Math.cos(tilt);
-      return [c + x1, c - y2, z2];
-    };
-    const br = r * 2 * Math.SQRT2 / 3, apex = P(0, r, 0);
-    const base = [0, 1, 2].map(k => { const q = k * 2 * Math.PI / 3; return P(Math.cos(q) * br, -r / 3, Math.sin(q) * br); });
-    const edges = [[apex, base[0]], [apex, base[1]], [apex, base[2]], [base[0], base[1]], [base[1], base[2]], [base[2], base[0]]];
-    edges.forEach(([p, q]) => { if ((p[2] + q[2]) / 2 < 0) line(p[0], p[1], q[0], q[1], DIM, 1.2, .7); });
-    ctx.shadowColor = FG; ctx.shadowBlur = 8 * DPR;
-    edges.forEach(([p, q]) => { if ((p[2] + q[2]) / 2 >= 0) line(p[0], p[1], q[0], q[1], FG, 1.8, 1); });
-    ctx.shadowBlur = 0;
-    const pr = (1.8 + 1.2 * Math.abs(Math.sin(t * 3))) * DPR;    // pulsing red core
-    ctx.globalAlpha = 1; ctx.fillStyle = RED; ctx.shadowColor = RED; ctx.shadowBlur = 10 * DPR;
-    ctx.beginPath(); ctx.arc(c, c, pr, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+    drawPyramid(ctx, c, c, R * .17, t, { fg: FG, dim: DIM, red: RED }, DPR);   // own position: the logo
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -1107,9 +1137,22 @@ function buildMarks() {
     : `<g class="mk" id="mk${i}"><line x1="${edge}" y1="${y}" x2="106" y2="${y}"/>
          <text x="109" y="${y + 3.5}" font-size="12">${label}</text></g>`).join('');
 }
+/* The logo pyramid as the hologram projector under the feet: the body is "projected" from it */
+function drawEmitter(t) {
+  const g = $('emit');
+  if (!g.childElementCount) g.innerHTML = '<line></line>'.repeat(6) + '<circle cx="50" cy="238" r="2"></circle>';
+  const ls = g.querySelectorAll('line');
+  pyramidEdges(50, 238, 15, t * 1.1, .3).forEach((e, k) => {
+    const l = ls[k];
+    l.setAttribute('x1', e.p[0].toFixed(2)); l.setAttribute('y1', e.p[1].toFixed(2));
+    l.setAttribute('x2', e.q[0].toFixed(2)); l.setAttribute('y2', e.q[1].toFixed(2));
+    l.setAttribute('class', e.front ? 'fr' : 'bk');
+  });
+  g.querySelector('circle').setAttribute('r', (1.7 + 1.1 * Math.abs(Math.sin(t * 3))).toFixed(2));
+}
 async function bioScan(cmd, result) {
   const ov = $('bioOv'), st = $('bStatus');
-  buildBody(); buildMarks();
+  buildBody(); buildMarks(); drawEmitter(0);
   ov.classList.add('on');
   await sleep(OPEN_MS);   // let the corner brackets fly out first
   const lines = cmd.lines.length ? cmd.lines : ['Scanning subject'];
@@ -1126,6 +1169,7 @@ async function bioScan(cmd, result) {
       $('scanLine').setAttribute('y1', y); $('scanLine').setAttribute('y2', y);
       $('scanBand').setAttribute('y', y - 16);
       $('bPct').textContent = 'SCAN ' + String(Math.round(p * 100)).padStart(3, '0') + '%';
+      drawEmitter(now / 1000);
       st.textContent = fill(lines[Math.min(lines.length - 1, Math.floor(p * lines.length))]);
       MARKS.forEach(([my], i) => {
         if (y >= my && !shown.has(i)) {
@@ -1477,15 +1521,29 @@ async function musicPlayer(cmd, url) {
   else await play(entries.length > 1 ? 1 : 0);     // saved songs first, theme if the library is empty
 
   const buf = new Uint8Array(32);
-  let running = true;
-  (function frame() {
+  const lc = $('eqLogo'), lctx = lc.getContext('2d'), DPRm = Math.min(2, devicePixelRatio || 1), TC = themeColors();
+  lc.width = lc.height = Math.max(120, Math.round(lc.clientHeight * DPRm));
+  let running = true, bass = 0;
+  (function frame(now) {
     if (!running) return;
+    now = now || performance.now();
     if (st.an) {
       st.an.getByteFrequencyData(buf);
       bars.forEach((b, n) => { b.style.height = (4 + buf[Math.floor(n * buf.length * .8 / bars.length)] / 255 * 96) + '%'; });
     } else {
       bars.forEach((b, n) => { drift[n] = Math.max(.05, Math.min(1, drift[n] + (Math.random() - .5) * .12)); b.style.height = (4 + drift[n] * 96) + '%'; });
     }
+    // speaker core: the logo pyramid swells and its core flares with the bass
+    const low = st.an ? (buf[0] + buf[1] + buf[2]) / 765 : (drift[0] + drift[1] + drift[2]) / 3;
+    bass += (low - bass) * .35;
+    const W = lc.width, cc = W / 2, rr = W * (.22 + .1 * bass);
+    lctx.clearRect(0, 0, W, W);
+    lctx.globalAlpha = .82; lctx.fillStyle = TC.bg;
+    lctx.beginPath(); lctx.arc(cc, cc, W * .36, 0, Math.PI * 2); lctx.fill();
+    lctx.globalAlpha = .6; lctx.strokeStyle = TC.dim; lctx.lineWidth = 1.2 * DPRm;
+    lctx.setLineDash([6 * DPRm, 6 * DPRm]);
+    lctx.beginPath(); lctx.arc(cc, cc, W * .36, now / 1500, now / 1500 + Math.PI * 2); lctx.stroke(); lctx.setLineDash([]);
+    drawPyramid(lctx, cc, cc, rr, now / 1000 * (1 + bass), TC, DPRm, 1 + bass * 1.6);
     const sec = Math.floor(st.el ? st.el.currentTime : (Date.now() - st.t0) / 1000);
     $('mTime').textContent = String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
     requestAnimationFrame(frame);
@@ -1780,6 +1838,9 @@ $('boot').addEventListener('click', async () => {
   tone(440, .08); setTimeout(() => tone(880, .12), 100); buzz(50);
   $('boot').classList.add('gone');
   setTimeout(stopGlobe, 600);
+  // Installed app: hold the screen sideways (either landscape direction).
+  // Only works in the installed fullscreen app; a normal browser tab ignores it.
+  try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
 
   buildGauges(); tick();
   const realBattery = await hookBattery();
