@@ -232,6 +232,63 @@
   .radar-ov.warn { animation: warnFlash .22s steps(1) 4; }
   @keyframes warnFlash { 50% { box-shadow: inset 0 0 0 5px var(--danger); } }
 
+  /* ---------- Geiger counter ---------- */
+  .gmeter { width: min(86vw, 60vh, 460px); height: auto; overflow: visible; }
+  .gmeter .tk { stroke: var(--dim); stroke-width: 1; }
+  .gmeter .tk.mj { stroke: var(--fg); stroke-width: 1.8; }
+  .gmeter .tk.red { stroke: var(--danger); }
+  .gmeter .arc { fill: none; stroke: var(--dim); stroke-width: 1; }
+  .gmeter .arc.red { stroke: var(--danger); stroke-width: 4; opacity: .8; }
+  .gmeter .lb { font-family: 'VT323', monospace; font-size: 11px; fill: var(--dim); text-anchor: middle; }
+  .gmeter .gunit { font-family: 'Share Tech Mono', monospace; font-size: 8px; fill: var(--dim); text-anchor: middle; letter-spacing: 1px; }
+  .gneedle { stroke: var(--accent); stroke-width: 2; stroke-linecap: round; transform-origin: 100px 108px;
+             filter: drop-shadow(0 0 3px var(--accent)); }
+  .gpivot { fill: var(--fg); }
+  .gread { display: flex; align-items: baseline; gap: 16px; font-family: 'VT323', monospace; }
+  .gread b { font-weight: 400; font-size: clamp(40px, min(12vw, 13vh), 80px); line-height: .9; color: var(--accent);
+             font-variant-numeric: tabular-nums; text-shadow: 0 0 10px var(--fg); }
+  .gread span { font-size: clamp(20px, min(6vw, 7vh), 34px); letter-spacing: 3px; }
+  .gread span.lv0 { color: var(--fg); } .gread span.lv1 { color: var(--lvl-mid); }
+  .gread span.lv2 { color: var(--danger); animation: blink .5s steps(1) infinite; }
+  #geiOv .mbtns, #mapOv .mbtns { width: min(92vw, 460px); }
+  @media (orientation: landscape) and (max-height: 520px) {
+    #geiOv { gap: 4px; }
+    .gmeter { width: min(72vh, 48vw); }
+  }
+
+  /* ---------- Satellite map (Leaflet + OpenStreetMap) ---------- */
+  :root, [data-theme="pip"] { --map-filter: grayscale(1) sepia(1) saturate(6) hue-rotate(68deg) brightness(1.5) contrast(1.2); }
+  [data-theme="amber"] { --map-filter: grayscale(1) sepia(1) saturate(5) hue-rotate(-8deg) brightness(1.5) contrast(1.2); }
+  [data-theme="red"] { --map-filter: grayscale(1) sepia(1) saturate(7) hue-rotate(-42deg) brightness(1.4) contrast(1.2); }
+  .mapbox { position: relative; width: min(94vw, 900px); height: min(52vh, 520px); border: 1px solid var(--fg); flex-shrink: 0; }
+  #map { position: absolute; inset: 0; background: var(--bg); }
+  #map .leaflet-tile-pane { filter: var(--map-filter); }
+  #map .leaflet-control-zoom a { background: var(--bg); color: var(--fg); border-color: var(--dim);
+                                 font-family: 'VT323', monospace; font-size: 22px; }
+  #map .leaflet-control-attribution { background: rgba(0, 0, 0, .65); color: var(--dim); font-size: 9px; }
+  #map .leaflet-control-attribution a { color: var(--fg); }
+  .mapret { position: absolute; inset: 0; pointer-events: none; z-index: 500;
+            background: linear-gradient(var(--dim), var(--dim)) center / 1px 30px no-repeat,
+                        linear-gradient(var(--dim), var(--dim)) center / 30px 1px no-repeat; opacity: .6; }
+  .mapmsg { position: absolute; inset: 0; z-index: 600; display: none; white-space: pre-line; align-items: center; justify-content: center;
+            text-align: center; padding: 20px; font-family: 'VT323', monospace; font-size: 26px; color: var(--danger);
+            background: color-mix(in srgb, var(--bg) 85%, transparent); }
+  .mapmsg.on { display: flex; }
+  .me { position: relative; width: 30px; height: 30px; }
+  .me::before { content: ""; position: absolute; inset: 0; border: 2px solid var(--fg); border-radius: 50%;
+                animation: mePulse 1.6s ease-out infinite; }
+  @keyframes mePulse { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+  .me i { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: translate(-50%, -62%);
+          border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 14px solid var(--fg);
+          filter: drop-shadow(0 0 4px var(--fg)); }
+  .me b { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -1px 0 0 -2.5px; border-radius: 50%;
+          background: var(--danger); }
+  @media (orientation: landscape) and (max-height: 520px) {
+    #mapOv { gap: 5px; }
+    .mapbox { height: 56vh; }
+    #mapOv .mbtns .cmd, #geiOv .mbtns .cmd { min-height: 46px; }
+  }
+
   /* ---------- Music player ---------- */
   .eq { display: flex; align-items: flex-end; gap: 4px; width: min(90vw, 460px); height: min(24vh, 200px); flex-shrink: 0;
         border-bottom: 1px solid var(--dim); }
@@ -255,6 +312,11 @@
   .mbtns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: min(92vw, 460px); }
   .mbtns .cmd { flex: 1 1 130px; min-height: 64px; text-align: center; font-size: 22px; }
   .cmd.stop { border-color: var(--danger); color: var(--danger); }
+  @media (orientation: landscape) and (max-height: 520px) {   /* all four player buttons on one row */
+    .mbtns { flex-wrap: nowrap; width: min(96vw, 680px); }
+    .mbtns .cmd { flex: 1 1 0; min-width: 0; min-height: 54px; font-size: 19px; padding: 6px 8px; }
+    #musOv { gap: 8px; }
+  }
   .cmd.stop small { color: var(--dim); }
 
   /* ---------- Completion alert (shared by every fullscreen effect) ---------- */
@@ -379,6 +441,33 @@
 
   /* ---------- Controls ---------- */
   .controls { display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
+
+  /* ---------- Jukebox deck: a vintage radio strip, styled apart from the console keys ---------- */
+  .deck { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px;
+          padding: 8px 30px 8px 10px; color: var(--accent); text-align: left; cursor: pointer;
+          background: linear-gradient(180deg, color-mix(in srgb, var(--faint) 80%, var(--bg)), var(--bg));
+          border: 1px solid var(--dim); border-radius: 14px 14px 4px 4px; border-bottom: 5px solid var(--dim);
+          box-shadow: inset 0 0 0 3px var(--bg), inset 0 0 0 4px var(--faint);
+          transition: transform .06s, border-bottom-width .06s; }
+  .deck:active, .deck.run { transform: translateY(3px); border-bottom-width: 2px; margin-bottom: 3px; }
+  .dk-grill { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--dim);
+              background: radial-gradient(circle, var(--dim) 1.2px, transparent 1.6px) 0 0 / 6px 6px; }
+  .deck.run .dk-grill { animation: grill .45s ease-in-out infinite alternate; }
+  @keyframes grill { to { transform: scale(1.08); background-color: var(--faint); } }
+  .dk-txt { display: flex; flex-direction: column; min-width: 0; }
+  .dk-txt .lbl { font-family: 'VT323', monospace; font-size: 26px; letter-spacing: 3px; line-height: 1; color: var(--fg); }
+  .dk-txt small { font-size: 10px; letter-spacing: 1px; color: var(--dim); margin-top: 3px; white-space: nowrap; }
+  .dk-dial { position: relative; flex: 1; min-width: 70px; height: 36px; border: 1px solid var(--dim); border-radius: 3px;
+             background: repeating-linear-gradient(90deg, var(--dim) 0 1px, transparent 1px 6px) 0 100% / 100% 9px no-repeat,
+                         color-mix(in srgb, var(--faint) 40%, var(--bg)); overflow: hidden; }
+  .dk-scale { position: absolute; left: 4px; right: 4px; top: 4px; font-size: 9px; color: var(--dim); white-space: nowrap;
+              overflow: hidden; text-align: center; letter-spacing: 1px; }
+  .dk-needle { position: absolute; top: 2px; bottom: 2px; width: 2px; background: var(--danger);
+               box-shadow: 0 0 6px var(--danger); animation: tune 7s ease-in-out infinite alternate; }
+  @keyframes tune { from { left: 12%; } 40% { left: 46%; } 55% { left: 41%; } to { left: 84%; } }
+  .deck .led { position: absolute; top: 10px; right: 10px; width: 11px; height: 11px; border: 1px solid var(--dim); background: var(--bg); }
+  .deck.run .led, .deck:active .led { background: var(--fg); border-color: var(--fg); box-shadow: 0 0 8px var(--fg); }
+  .grid.busy ~ .deck:not(.run) { opacity: .35; }
   .tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
   .tabs::-webkit-scrollbar { display: none; }
   .tabs[hidden] { display: none; }
@@ -477,7 +566,7 @@
 <body data-theme="pip">
 
 <div id="boot">
-  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B20</span></div>
+  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B22</span></div>
   <div id="bootLog"></div>
   <canvas id="globe" aria-hidden="true"></canvas>
   <div class="tap">[ INITIATE SYSTEM ]</div>
@@ -513,6 +602,13 @@
   <div class="controls">
     <nav class="tabs" id="tabs" hidden></nav>
     <section class="grid" id="grid"></section>
+    <!-- Jukebox: its own radio-deck control, built in (not a Sheet button) -->
+    <button class="deck" id="deck" aria-label="Jukebox">
+      <span class="dk-grill" aria-hidden="true"></span>
+      <span class="dk-txt"><span class="lbl">JUKEBOX</span><small>AUDIO LINK :: TAP TO TUNE IN</small></span>
+      <span class="dk-dial" aria-hidden="true"><span class="dk-scale">88 · 92 · 96 · 100 · 104 · 108</span><i class="dk-needle"></i></span>
+      <i class="led"></i>
+    </button>
   </div>
 </div>
 
@@ -566,6 +662,29 @@
   <div class="hud-line"><span id="bHr">HR 000 BPM</span><span>DEPTH 03</span></div>
 </div>
 
+<div class="radar-ov" id="geiOv">
+  <div class="hud-line"><span>RADIATION MONITOR // RS-2</span><span id="gCpm">CPM 0000</span></div>
+  <svg class="gmeter" id="gMeter" viewBox="0 0 200 118" aria-hidden="true">
+    <g id="gScale"></g>
+    <line id="gNeedle" class="gneedle" x1="100" y1="108" x2="100" y2="28"/>
+    <circle cx="100" cy="108" r="5" class="gpivot"/>
+    <text x="100" y="92" class="gunit">mR/h</text>
+  </svg>
+  <div class="gread"><b id="gRad">0000</b><span id="gStat">NORMAL</span></div>
+  <div class="mbtns"><button class="cmd stop" id="gClose">CLOSE<small>END READING</small></button></div>
+  <div class="hud-line"><span id="gDose">DOSE 0.000 mR</span><span id="gSrc">SENSOR: MOTION</span></div>
+</div>
+
+<div class="radar-ov" id="mapOv">
+  <div class="hud-line"><span>SATELLITE UPLINK // GEO-01</span><span id="sStat">ACQUIRING</span></div>
+  <div class="mapbox"><div id="map"></div><div class="mapret" aria-hidden="true"></div><div class="mapmsg" id="sMsg"></div></div>
+  <div class="hud-line"><span id="sPos">LAT --.----- LON --.-----</span><span id="sAcc">ACC ----M</span></div>
+  <div class="mbtns">
+    <button class="cmd" id="sCenter">RECENTER<small>LOCK ON ME</small></button>
+    <button class="cmd stop" id="sClose">CLOSE<small>END UPLINK</small></button>
+  </div>
+</div>
+
 <div class="radar-ov" id="musOv">
   <div class="hud-line"><span>AUDIO LINK // CH 01</span><span id="mTime">00:00</span></div>
   <div class="eqwrap"><div class="eq" id="eq"></div><canvas class="eqlogo" id="eqLogo"></canvas></div>
@@ -573,6 +692,7 @@
   <div class="mlist" id="mList"></div>
   <div class="mbtns">
     <button class="cmd" id="mLoad">ADD SONGS<small>FROM PHONE</small></button>
+    <button class="cmd" id="mPause"><span class="pl">PAUSE</span><small>HOLD TRACK</small></button>
     <button class="cmd" id="mNext">NEXT<small>SKIP TRACK</small></button>
     <button class="cmd stop" id="mStop">STOP<small>END PLAYBACK</small></button>
   </div>
@@ -612,7 +732,7 @@ const CONFIG = {
   sheetUrl: 'https://script.google.com/macros/s/AKfycbxZGZteYUqlIQaBmvQ6z2HRrNb67AZkOI_oRpesJl-EApOKii0mQiqHVDqWoM2oiYvdeg/exec',   /* your Apps Script web app URL (ends in /exec); leave empty to run on built-in commands */
   apiKey: 'if-you--like-pina-colada'      /* must match API_KEY in Code.gs */
 };
-const VERSION = 'v2.7', BUILD = 20;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
+const VERSION = 'v2.7', BUILD = 22;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
 
 /* ======================================================
    Fallback commands — used if the sheet can't be reached
@@ -623,8 +743,8 @@ const FALLBACK = [
   { label:'CHECK VITALS', group:'MED', lines:['Scanning subject'], duration:5000,
     result:'BIOSCAN COMPLETE: BRAIN ACTIVITY - LOW ({low}%)|TOXICITY LEVELS - HIGH ({high}%)|SENSE OF STYLE - TERRIBLE ({low}%)',
     danger:false, effect:'bioscan' },
-  { label:'JUKEBOX', group:'AUD', lines:['BRACHIUM THEME'], duration:0, result:'PLAYBACK ENDED', danger:false, effect:'music' },
-  { label:'CORE OVERLOAD', group:'SYS', lines:['Bypassing reactor limiter','T-minus 3','T-minus 2','T-minus 1'], duration:3500, result:'ABORTED BY SAFETY PROTOCOL', danger:true, effect:'' }
+  { label:'SATELLITE', group:'NAV', lines:['Acquiring satellites'], duration:0, result:'UPLINK CLOSED', danger:false, effect:'map' },
+  { label:'GEIGER COUNTER', group:'ENV', lines:['Sampling radiation'], duration:0, result:'READINGS LOGGED', danger:false, effect:'geiger' }
 ];
 
 /* HUD readouts. v is the fill level, 0-100. type picks the mini instrument.
@@ -1400,8 +1520,8 @@ function startTheme() {
   };
 
   const s16 = 60 / 145 / 4;                        // one 16th note at 145 BPM
-  let k = 0, next = audio.currentTime + .1;
-  const timer = setInterval(() => {
+  let k = 0, next = audio.currentTime + .1, timer = null;
+  const schedule = () => {
     while (next < audio.currentTime + .15) {
       const bar = (k >> 4) % 8, step = k & 15, root = HS.roots[bar % 4];
       if (step % 4 === 0) kick(next);
@@ -1411,8 +1531,13 @@ function startTheme() {
       const n = HS.lead[bar][step]; if (n) stab(next, n);
       k = (k + 1) % 128; next += s16;
     }
-  }, 25);
-  return { analyser: an, stop: () => {
+  };
+  timer = setInterval(schedule, 25);
+  return { analyser: an,
+    // pause keeps the position in the song (k); resume picks up from the same beat
+    pause: () => { clearInterval(timer); timer = null; bus.gain.setTargetAtTime(.0001, audio.currentTime, .03); },
+    resume: () => { if (timer) return; next = audio.currentTime + .08; bus.gain.setTargetAtTime(.5, audio.currentTime, .02); timer = setInterval(schedule, 25); },
+    stop: () => {
     clearInterval(timer);
     bus.gain.setTargetAtTime(.0001, audio.currentTime, .05);
     setTimeout(() => { try { bus.disconnect(); comp.disconnect(); an.disconnect(); drive.disconnect(); bassDrive.disconnect(); leadLp.disconnect(); } catch (e) {} }, 500);
@@ -1459,7 +1584,26 @@ async function musicPlayer(cmd, url) {
       listEl.appendChild(row);
     });
   }
+  function setPaused(p) {
+    st.paused = p;
+    $('mPause').querySelector('.pl').textContent = p ? 'RESUME' : 'PAUSE';
+    $('mPause').querySelector('small').textContent = p ? 'CONTINUE TRACK' : 'HOLD TRACK';
+    $('mPause').classList.toggle('run', p);
+  }
+  function togglePause() {
+    tone(700, .04);
+    if (!st.paused) {
+      setPaused(true);
+      st.pausedAt = Date.now();
+      if (st.el) st.el.pause(); else if (st.theme) st.theme.pause();
+    } else {
+      setPaused(false);
+      st.t0 += Date.now() - (st.pausedAt || Date.now());   /* the clock doesn't count paused time */
+      if (st.el) st.el.play().catch(() => {}); else if (st.theme) st.theme.resume();
+    }
+  }
   function stopCurrent() {
+    setPaused(false); st.theme = null;
     try { st.stop(); } catch (e) {}
     if (st.objUrl) URL.revokeObjectURL(st.objUrl);
     st.el = null; st.an = null; st.objUrl = null; st.stop = () => {};
@@ -1470,7 +1614,7 @@ async function musicPlayer(cmd, url) {
     const en = entries[n];
     title.textContent = en.name;
     if (en.theme) {
-      const t = startTheme(); st.an = t.analyser; st.stop = t.stop; st.t0 = Date.now();
+      const t = startTheme(); st.theme = t; st.an = t.analyser; st.stop = t.stop; st.t0 = Date.now();
       srcEl.textContent = 'SOURCE: SYNTH CORE :: 145 BPM';
       return true;
     }
@@ -1494,6 +1638,7 @@ async function musicPlayer(cmd, url) {
   let finish; const done = new Promise(r => { finish = r; });
   $('mStop').onclick = () => finish();
   $('mNext').onclick = () => { tone(900, .04); play((st.cur + 1) % entries.length); };
+  $('mPause').onclick = togglePause;
   $('mLoad').onclick = () => $('mFile').click();
   $('mFile').onchange = async e => {
     const files = [...e.target.files].filter(f => f.type.startsWith('audio') || /\.(mp3|m4a|aac|ogg|opus|wav|flac)$/i.test(f.name));
@@ -1544,7 +1689,7 @@ async function musicPlayer(cmd, url) {
     lctx.setLineDash([6 * DPRm, 6 * DPRm]);
     lctx.beginPath(); lctx.arc(cc, cc, W * .36, now / 1500, now / 1500 + Math.PI * 2); lctx.stroke(); lctx.setLineDash([]);
     drawPyramid(lctx, cc, cc, rr, now / 1000 * (1 + bass), TC, DPRm, 1 + bass * 1.6);
-    const sec = Math.floor(st.el ? st.el.currentTime : (Date.now() - st.t0) / 1000);
+    const sec = Math.floor(st.el ? st.el.currentTime : ((st.paused ? st.pausedAt : Date.now()) - st.t0) / 1000);
     $('mTime').textContent = String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
     requestAnimationFrame(frame);
   })();
@@ -1571,13 +1716,17 @@ async function run(cmd, btn) {
 
   await typeLine(`> EXEC ${cmd.label}`, 'sys', 5);
   const result = fill(cmd.result);
-  const DEFAULT_FX = { 'SCAN AREA': 'radar', 'CHECK VITALS': 'bioscan', 'JUKEBOX': 'music' };
+  const DEFAULT_FX = { 'SCAN AREA': 'radar', 'CHECK VITALS': 'bioscan', 'JUKEBOX': 'music', 'SATELLITE': 'map', 'GEIGER COUNTER': 'geiger' };
   // Effect cell can carry an argument, e.g. "music https://example.com/song.mp3"
   const [fxWord = '', ...fxArgs] = (cmd.effect || DEFAULT_FX[cmd.label] || '').trim().split(/\s+/);
   const effect = fxWord.toLowerCase();
 
   if (effect === 'music') {
     await musicPlayer(cmd, fxArgs.join(' '));
+  } else if (effect === 'geiger') {
+    await geigerCounter(cmd);
+  } else if (effect === 'map') {
+    await satellite(cmd);
   } else if (effect === 'radar') {
     await radarScan(cmd, result);
   } else if (effect === 'bioscan') {
@@ -1606,6 +1755,7 @@ async function run(cmd, btn) {
   $('prog').style.width = '0';
   btn.classList.remove('run'); $('grid').classList.remove('busy');
   busy = false;
+  if (pendingRender) { pendingRender = false; render(); }   /* apply a Sheet update that arrived mid-command */
 }
 function disarm() {
   if (!armed) return;
@@ -1613,6 +1763,165 @@ function disarm() {
   armed.querySelector('.lbl').textContent = armed.dataset.label;
   armed = null;
 }
+
+/* ---------- Geiger counter ----------
+   Driven by the phone's motion sensor: sweep your arm and it "detects" more radiation.
+   Clicks are random (like real decay) but get more frequent as the level rises. If the
+   phone gives no motion data, the reading drifts on its own with occasional spikes.
+   Tapping the meter also triggers a spike, for showing off. */
+let clickBuf = null;
+function geigerClick() {
+  if (!audio) return;
+  if (!clickBuf) {
+    clickBuf = audio.createBuffer(1, Math.round(audio.sampleRate * .004), audio.sampleRate);
+    clickBuf.getChannelData(0).forEach((_, k, d) => { d[k] = (Math.random() * 2 - 1) * (1 - k / d.length); });
+  }
+  const src = audio.createBufferSource(), hp = audio.createBiquadFilter(), g = audio.createGain();
+  src.buffer = clickBuf; hp.type = 'highpass'; hp.frequency.value = 1800; g.gain.value = .5;
+  src.connect(hp).connect(g).connect(audio.destination); src.start();
+}
+function buildGeigerScale() {
+  const g = $('gScale'); if (g.childElementCount) return;
+  const P = (v, r) => { const a = (-60 + v / 1000 * 120) * Math.PI / 180; return [100 + Math.sin(a) * r, 108 - Math.cos(a) * r]; };
+  const arc = (v1, v2, r) => { const [x1, y1] = P(v1, r), [x2, y2] = P(v2, r); return `M${x1.toFixed(1)} ${y1.toFixed(1)}A${r} ${r} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`; };
+  let h = `<path class="arc" d="${arc(0, 1000, 86)}"/><path class="arc red" d="${arc(700, 1000, 90)}"/>`;
+  for (let v = 0; v <= 1000; v += 50) {
+    const mj = v % 100 === 0, [x1, y1] = P(v, 86), [x2, y2] = P(v, mj ? 74 : 80);
+    h += `<line class="tk${mj ? ' mj' : ''}${v >= 700 ? ' red' : ''}" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`;
+    if (v % 250 === 0) { const [lx, ly] = P(v, 64); h += `<text class="lb" x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}">${v}</text>`; }
+  }
+  g.innerHTML = h;
+}
+async function geigerCounter(cmd) {
+  const ov = $('geiOv');
+  buildGeigerScale();
+  ov.classList.add('on');
+  await sleep(OPEN_MS);
+  let motion = 0, gotMotion = false, sim = .05, level = 0, dose = 0, last = performance.now(), running = true;
+  const t0 = performance.now(), clicks = [];
+  const onMotion = e => {
+    let m = null;
+    const a = e.acceleration;
+    if (a && a.x != null) m = Math.hypot(a.x, a.y, a.z);
+    else if (e.accelerationIncludingGravity && e.accelerationIncludingGravity.x != null) {
+      const g = e.accelerationIncludingGravity; m = Math.abs(Math.hypot(g.x, g.y, g.z) - 9.81);
+    }
+    if (m == null) return;
+    gotMotion = true;
+    motion = Math.max(motion, Math.min(1, m / 12));
+  };
+  addEventListener('devicemotion', onMotion);
+  $('gMeter').onclick = () => { motion = 1; };
+  let finish; const done = new Promise(r => { finish = r; });
+  $('gClose').onclick = () => finish();
+  (function frame(now) {
+    if (!running) return;
+    const dt = Math.min(.1, Math.max(0, (now - last) / 1000)); last = now;
+    motion *= Math.pow(.3, dt);                                   /* fades after you stop moving */
+    if (!gotMotion && now - t0 > 1500) {                          /* no sensor: wander, with spikes */
+      sim += (Math.random() - .5) * dt * .6;
+      if (Math.random() < dt * .15) sim = .55 + Math.random() * .4;
+      sim = Math.max(.03, Math.min(1, sim * Math.pow(.6, dt) + .02 * dt));
+    }
+    const target = Math.max(motion, gotMotion ? .03 : sim);
+    level += (target - level) * Math.min(1, dt * 3);
+    const rate = 1.2 + level * 55;                               /* clicks per second */
+    if (Math.random() < rate * dt) { geigerClick(); clicks.push(now); if (level > .7) buzz(8); }
+    while (clicks.length && now - clicks[0] > 6000) clicks.shift();
+    const mr = Math.max(0, Math.round(8 + level * 940 + (Math.random() - .5) * 12));
+    dose += mr * dt / 3600;
+    $('gNeedle').style.transform = `rotate(${(-60 + Math.min(1000, mr) / 1000 * 120).toFixed(1)}deg)`;
+    $('gRad').textContent = String(mr).padStart(4, '0');
+    $('gCpm').textContent = 'CPM ' + String(clicks.length * 10).padStart(4, '0');
+    $('gDose').textContent = 'DOSE ' + dose.toFixed(3) + ' mR';
+    $('gSrc').textContent = gotMotion ? 'SENSOR: MOTION' : 'SENSOR: AMBIENT';
+    const lv = mr >= 700 ? 2 : mr >= 300 ? 1 : 0, st = $('gStat');
+    st.textContent = ['NORMAL', 'ELEVATED', 'DANGER'][lv]; st.className = 'lv' + lv;
+    requestAnimationFrame(frame);
+  })(performance.now());
+  await done;
+  running = false;
+  removeEventListener('devicemotion', onMotion);
+  tone(400, .1);
+  ov.classList.remove('on');
+}
+
+/* ---------- Satellite map ----------
+   Leaflet (open-source map library) drawing OpenStreetMap data (free community map),
+   using CARTO's dark map style, recoloured to the theme with a CSS filter. Leaflet is only downloaded the first time
+   you open the map. Needs mobile data and permission to use your location. */
+let leafletP = null, map = null, meMarker = null, mePos = null;
+function loadLeaflet() {
+  if (window.L) return Promise.resolve();
+  if (leafletP) return leafletP;
+  leafletP = new Promise((res, rej) => {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(css);
+    const sc = document.createElement('script');
+    sc.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    sc.onload = () => res();
+    sc.onerror = () => { leafletP = null; rej(new Error('map library unreachable')); };
+    document.head.appendChild(sc);
+  });
+  return leafletP;
+}
+async function satellite(cmd) {
+  const ov = $('mapOv'), msg = $('sMsg'), stat = $('sStat');
+  const say = t => { msg.textContent = t; msg.classList.toggle('on', !!t); };
+  stat.textContent = 'ACQUIRING'; say('');
+  ov.classList.add('on');
+  await sleep(OPEN_MS);
+  let finish; const done = new Promise(r => { finish = r; });
+  $('sClose').onclick = () => finish();
+  let watchId = null;
+  try {
+    say('LOADING MAP CORE...');
+    await Promise.race([loadLeaflet(), new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 10000))]);
+    say('');
+    if (!map) {
+      map = L.map('map', { zoomControl: true, attributionControl: true }).setView([20, 0], 2);
+      // CARTO "Dark Matter": OpenStreetMap data drawn light-on-dark, free for personal use
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        { maxZoom: 19, subdomains: 'abcd',
+          attribution: '&copy; OpenStreetMap contributors &copy; CARTO' }).addTo(map);
+    }
+    setTimeout(() => map.invalidateSize(), 60);
+    if (mePos) map.setView(mePos, 16);
+    $('sCenter').onclick = () => { tone(900, .04); if (mePos) map.setView(mePos, 16); };
+    if (!navigator.geolocation) { stat.textContent = 'NO GPS'; }
+    else {
+      watchId = navigator.geolocation.watchPosition(p => {
+        const first = !mePos;
+        mePos = [p.coords.latitude, p.coords.longitude];
+        if (!meMarker) meMarker = L.marker(mePos, { icon: L.divIcon({ className: '', html: '<div class="me"><i></i><b></b></div>', iconSize: [30, 30], iconAnchor: [15, 15] }) }).addTo(map);
+        else meMarker.setLatLng(mePos);
+        if (first) { map.setView(mePos, 16); tone(1300, .08); }
+        stat.textContent = 'UPLINK ESTABLISHED';
+        $('sPos').textContent = 'LAT ' + mePos[0].toFixed(5) + '  LON ' + mePos[1].toFixed(5);
+        $('sAcc').textContent = 'ACC ' + String(Math.round(p.coords.accuracy)).padStart(4, '0') + 'M';
+      }, err => {
+        stat.textContent = err.code === 1 ? 'LOCATION DENIED' : 'NO GPS FIX';
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+    }
+  } catch (e) {
+    stat.textContent = 'LINK FAILED';
+    say('SATELLITE LINK LOST\nCHECK MOBILE DATA');
+  }
+  await done;
+  if (watchId != null) navigator.geolocation.clearWatch(watchId);
+  tone(400, .1);
+  ov.classList.remove('on');
+}
+
+/* ---------- Jukebox deck ----------
+   Uses a music row from the Sheet if there is one (so a song link in its Effect cell
+   still works), otherwise the built-in jukebox. */
+const JUKEBOX_CMD = { label: 'JUKEBOX', group: 'AUD', lines: ['BRACHIUM THEME'], duration: 0, result: 'PLAYBACK ENDED', danger: false, effect: 'music' };
+$('deck').onclick = () => {
+  const c = commands.find(x => /^music\b/i.test(x.effect || '') || x.label === 'JUKEBOX') || JUKEBOX_CMD;
+  run(c, $('deck'));
+};
 
 /* ---------- Building the UI from config ---------- */
 function render() {
@@ -1631,7 +1940,9 @@ function render() {
   }
 
   $('grid').innerHTML = '';
-  commands.filter(c => activeGroup === 'ALL' || c.group === activeGroup).forEach(c => {
+  // Music commands live on the jukebox deck, not in the grid
+  const isMusic = c => /^music\b/i.test(c.effect || '') || c.label === 'JUKEBOX';
+  commands.filter(c => !isMusic(c) && (activeGroup === 'ALL' || c.group === activeGroup)).forEach(c => {
     const b = document.createElement('button');
     b.className = 'cmd' + (c.danger ? ' danger' : '');
     b.dataset.label = c.label;
@@ -1806,6 +2117,13 @@ function loadConfig() {
     let saved = null;                                  /* last commands received, kept for offline use */
     try { saved = JSON.parse(localStorage.getItem('br-commands') || 'null'); } catch (e) {}
     if (!CONFIG.sheetUrl) return resolve({ list: saved || FALLBACK, offline: true, saved: !!saved });
+    // Apps Script can take a few seconds to wake up. If we already have the commands
+    // from last time, show those instantly and update quietly when the Sheet answers.
+    if (saved) {
+      resolve({ list: saved, offline: false, cached: true });
+      fetchCommands().then(applyFresh).catch(() => { syncNote = 'Datastore offline: using saved commands.'; });
+      return;
+    }
     try {
       // 8-second time limit done with a race instead of an AbortSignal: some preview
       // environments relay fetch() through postMessage, which can't carry a signal.
@@ -1821,6 +2139,25 @@ function loadConfig() {
       resolve({ list: saved || FALLBACK, offline: true, saved: !!saved, err });
     }
   });
+}
+let freshCommands = null, booted = false, pendingRender = false, syncNote = '';
+async function fetchCommands() {
+  const res = await Promise.race([
+    fetch(CONFIG.sheetUrl + '?api=config&key=' + encodeURIComponent(CONFIG.apiKey)),
+    new Promise((_, no) => setTimeout(() => no(new Error('no answer within 8s')), 8000))
+  ]);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'datastore refused the request');
+  try { localStorage.setItem('br-commands', JSON.stringify(data.commands)); } catch (e) {}
+  return data.commands;
+}
+function applyFresh(list) {                           /* the Sheet answered: update only if something changed */
+  if (!list.length) return;
+  freshCommands = list;
+  if (!booted || JSON.stringify(list) === JSON.stringify(commands)) return;
+  commands = list;
+  if (busy) pendingRender = true; else render();
+  typeLine('Datastore synced: ' + list.length + ' commands updated.', 'sys');
 }
 function sendLog(label, result) {
   if (window.google && google.script) return google.script.run.logCommand(label, result);
@@ -1851,15 +2188,17 @@ $('boot').addEventListener('click', async () => {
   setInterval(() => nudgeGauges(false), 1200);
   setInterval(drawGlyphs, 2400);
 
-  const { list, offline, err, saved } = await configReady;
-  commands = list;
+  const { list, offline, err, saved, cached } = await configReady;
+  commands = freshCommands || list;                    /* use the Sheet's answer if it already arrived */
+  booted = true;
   render();
 
   await typeLine('BRACHIUM ONLINE. WELCOME BACK, CAPTAIN.', 'ok');
   if (offline) await typeLine(
     saved ? 'Datastore offline: using saved commands.'
           : err ? `Datastore unreachable: ${err.message}` : 'Offline mode: built-in commands loaded.', 'bad');
-  else await typeLine(`${commands.length} commands loaded from datastore.`, 'sys');
+  else await typeLine(`${commands.length} commands loaded from datastore${cached && !freshCommands ? ' (saved copy, syncing)' : ''}.`, 'sys');
+  if (syncNote) await typeLine(syncNote, 'bad');
   if (realBattery) await typeLine('Power cell linked to device battery.', 'sys');
 }, { once: true });
 </script>
