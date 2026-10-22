@@ -632,7 +632,7 @@
 <body data-theme="pip">
 
 <div id="boot">
-  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B25</span></div>
+  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B29</span></div>
   <div id="bootLog"></div>
   <canvas id="globe" aria-hidden="true"></canvas>
   <div class="tap">[ INITIATE SYSTEM ]</div>
@@ -846,7 +846,7 @@ const CONFIG = {
   sheetUrl: 'https://script.google.com/macros/s/AKfycbxZGZteYUqlIQaBmvQ6z2HRrNb67AZkOI_oRpesJl-EApOKii0mQiqHVDqWoM2oiYvdeg/exec',   /* your Apps Script web app URL (ends in /exec); leave empty to run on built-in commands */
   apiKey: 'if-you--like-pina-colada'      /* must match API_KEY in Code.gs */
 };
-const VERSION = 'v2.7', BUILD = 25;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
+const VERSION = 'v2.7', BUILD = 29;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
 
 /* ======================================================
    Fallback commands — used if the sheet can't be reached
@@ -1659,7 +1659,7 @@ function distCurve(k) {                          // soft-clip curve: the "hard" 
   for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; c[i] = (1 + k) * x / (1 + k * Math.abs(x)); }
   return c;
 }
-function startTheme() {
+function startTheme(variant = 1) {
   const comp = audio.createDynamicsCompressor(), bus = audio.createGain(), an = audio.createAnalyser();
   bus.gain.value = .5; an.fftSize = 64; an.smoothingTimeConstant = .7;
   bus.connect(comp).connect(an).connect(audio.destination);
@@ -1684,14 +1684,15 @@ function startTheme() {
     const o = audio.createOscillator(), g = audio.createGain();
     o.frequency.setValueAtTime(320, t); o.frequency.exponentialRampToValueAtTime(58, t + .045);
     o.frequency.exponentialRampToValueAtTime(48, t + .3);
-    g.gain.setValueAtTime(.9, t); g.gain.setValueAtTime(.9, t + .08); g.gain.exponentialRampToValueAtTime(.0001, t + .24);
+    g.gain.setValueAtTime(.78, t); g.gain.setValueAtTime(.78, t + .08); g.gain.exponentialRampToValueAtTime(.0001, t + .24);
     o.connect(g).connect(drive); o.start(t); o.stop(t + .26);   // shorter tail leaves room for the offbeat bass
   };
+  let bassLevel = .23;                           // was .32: a little less bass so the lead and drums come through
   const offBass = (t, m) => {                    // instant hit, quick decay: the jumpstyle bounce
     [['sawtooth', 0], ['square', -8]].forEach(([type, cents]) => {
       const o = audio.createOscillator(), g = audio.createGain();
       o.type = type; o.frequency.value = MIDI(m + 12); o.detune.value = cents;
-      g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.32, t + .004);
+      g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(bassLevel, t + .004);
       g.gain.exponentialRampToValueAtTime(.0001, t + .14);
       o.connect(g).connect(bassDrive); o.start(t); o.stop(t + .16);
     });
@@ -1710,16 +1711,65 @@ function startTheme() {
     });
   };
 
-  const s16 = 60 / 145 / 4;                        // one 16th note at 145 BPM
+  // --- extra voices for THEME 2 ---
+  const hoover = (t, m, len) => {                // detuned saws gliding down: the rave "hoover"
+    [-22, -9, 0, 11, 24].forEach(c => {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'sawtooth'; o.detune.value = c;
+      o.frequency.setValueAtTime(MIDI(m + 7), t); o.frequency.exponentialRampToValueAtTime(MIDI(m), t + .12);
+      g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.018, t + .02);
+      g.gain.setValueAtTime(.018, t + len * .7); g.gain.exponentialRampToValueAtTime(.0001, t + len);
+      o.connect(g).connect(leadLp); o.start(t); o.stop(t + len + .02);
+    });
+  };
+  const riser = (t, len) => {                    // white-noise sweep that builds into the drop
+    const s = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain();
+    s.buffer = noiseBuf; s.loop = true; f.type = 'bandpass'; f.Q.value = 3;
+    f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(9000, t + len);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.12, t + len);
+    s.connect(f).connect(g).connect(bus); s.start(t); s.stop(t + len);
+  };
+  const W2 = {                                   // THEME 2: D minor, 160 BPM
+    roots: [38, 34, 41, 36],                     // D Bb F C
+    chords: [[62, 65, 69], [58, 62, 65], [65, 69, 72], [60, 64, 67]],
+    arp: [0, 1, 2, 1, 2, 0, 1, 2, 3, 2, 1, 2, 0, 2, 1, 3]   // 3 = top note an octave up
+  };
+
+  const bpm = variant === 2 ? 160 : 145;
+  const s16 = 60 / bpm / 4;                       // one 16th note
+  if (variant === 2) bassLevel = .2;
   let k = 0, next = audio.currentTime + .1, timer = null;
   const schedule = () => {
     while (next < audio.currentTime + .15) {
-      const bar = (k >> 4) % 8, step = k & 15, root = HS.roots[bar % 4];
-      if (step % 4 === 0) kick(next);
-      if (step % 4 === 2) { offBass(next, root); noise(next, .09, .07, 'highpass', 7000); }
-      if (step === 4 || step === 12) noise(next, .14, .22, 'bandpass', 1600);
-      if (step % 2 === 1) noise(next, .03, .03, 'highpass', 9000);
-      const n = HS.lead[bar][step]; if (n) stab(next, n);
+      const bar = (k >> 4) % 8, step = k & 15;
+      if (variant === 2) {
+        const ch = bar % 4, root = W2.roots[ch], chord = W2.chords[ch];
+        const build = bar === 7;                                     // last bar: drums drop out, snare roll + riser
+        if (step % 4 === 0 && !build) kick(next);
+        if (step % 4 !== 0 && !build) offBass(next, root + (step % 4 === 3 ? 12 : 0));   // rolling bass
+        if (step % 2 === 1) noise(next, .03, .035, 'highpass', 9000);
+        if (step % 4 === 2) noise(next, .08, .06, 'highpass', 7000);
+        // snare on every 2nd sixteenth (rapid-fire), with the backbeats (2 and 4) hit harder
+        if (!build && step % 2 === 0) noise(next, .1, (step === 4 || step === 12) ? .22 : .13, 'bandpass', 1700);
+        // "sst": the crash from the start of the loop, now on every offbeat between the kicks
+        // (tun / sst / tun / sst); the kick and rolling bass carry on underneath
+        if (!build && step % 4 === 2) noise(next, .3, .25, 'highpass', 4000);
+        if (build) {                                                  // roll speeds up across the bar
+          if (step < 8 ? step % 2 === 0 : true) noise(next, .08, .08 + step * .012, 'bandpass', 1500 + step * 150);
+          if (step === 0) riser(next, s16 * 16);
+        }
+        if (bar === 0 && step === 0) noise(next, .3, .25, 'highpass', 4000);   // crash on the drop
+        const a = W2.arp[step], note = a === 3 ? chord[0] + 12 : chord[a];
+        stab(next, note + 12);                                        // non-stop 16th arpeggio
+        if (step === 0 && bar % 2 === 0 && !build) hoover(next, chord[0], s16 * 6);
+      } else {
+        const root = HS.roots[bar % 4];
+        if (step % 4 === 0) kick(next);
+        if (step % 4 === 2) { offBass(next, root); noise(next, .09, .07, 'highpass', 7000); }
+        if (step === 4 || step === 12) noise(next, .14, .22, 'bandpass', 1600);
+        if (step % 2 === 1) noise(next, .03, .03, 'highpass', 9000);
+        const n = HS.lead[bar][step]; if (n) stab(next, n);
+      }
       k = (k + 1) % 128; next += s16;
     }
   };
@@ -1740,14 +1790,15 @@ async function musicPlayer(cmd, url) {
   const ov = $('musOv'), eq = $('eq'), title = $('mTitle'), srcEl = $('mSrc'), listEl = $('mList');
   eq.innerHTML = '<i></i>'.repeat(24);
   const bars = [...eq.children], drift = bars.map(() => .2);
-  const THEME = { theme: true, name: fill(cmd.lines[0] || 'BRACHIUM THEME') };
+  const THEME = { theme: 1, name: fill(cmd.lines[0] || 'BRACHIUM THEME') };
+  const THEME2 = { theme: 2, name: 'BRACHIUM THEME 2' };
   const st = { el: null, an: null, stop: () => {}, objUrl: null, t0: Date.now(), cur: 0 };
-  let entries = [THEME], dbOk = true;
+  let entries = [THEME, THEME2], dbOk = true;
   ov.classList.add('on');
   await sleep(OPEN_MS);   // let the corner brackets fly out first
 
   async function refresh() {
-    try { entries = [THEME, ...(await SongDB.all())]; } catch (e) { dbOk = false; }
+    try { entries = [THEME, THEME2, ...(await SongDB.all())]; } catch (e) { dbOk = false; }
     $('mStore').textContent = dbOk ? await storageText() : 'STORAGE OFFLINE';
     drawList();
   }
@@ -1805,8 +1856,8 @@ async function musicPlayer(cmd, url) {
     const en = entries[n];
     title.textContent = en.name;
     if (en.theme) {
-      const t = startTheme(); st.theme = t; st.an = t.analyser; st.stop = t.stop; st.t0 = Date.now();
-      srcEl.textContent = 'SOURCE: SYNTH CORE :: 145 BPM';
+      const t = startTheme(en.theme); st.theme = t; st.an = t.analyser; st.stop = t.stop; st.t0 = Date.now();
+      srcEl.textContent = 'SOURCE: SYNTH CORE :: ' + (en.theme === 2 ? '160' : '145') + ' BPM';
       return true;
     }
     const el = new Audio(en.blob ? (st.objUrl = URL.createObjectURL(en.blob)) : en.url);
@@ -1816,7 +1867,7 @@ async function musicPlayer(cmd, url) {
       an.fftSize = 64; an.smoothingTimeConstant = .75;
       node.connect(an); an.connect(audio.destination);
       st.an = an; st.stop = () => { el.pause(); node.disconnect(); an.disconnect(); };
-      srcEl.textContent = `SOURCE: STORAGE ${n}/${entries.length - 1}`;
+      srcEl.textContent = `SOURCE: STORAGE ${n - 1}/${entries.length - 2}`;
     } else {
       st.stop = () => el.pause();
       srcEl.textContent = 'SOURCE: EXTERNAL FILE';
@@ -1853,8 +1904,8 @@ async function musicPlayer(cmd, url) {
   };
 
   await refresh();
-  if (url) { entries.splice(1, 0, { name: fill(cmd.lines[0] || 'EXTERNAL TRACK'), url }); if (!await play(1)) { await sleep(1500); play(0); } }
-  else await play(entries.length > 1 ? 1 : 0);     // saved songs first, theme if the library is empty
+  if (url) { entries.splice(2, 0, { name: fill(cmd.lines[0] || 'EXTERNAL TRACK'), url }); if (!await play(2)) { await sleep(1500); play(0); } }
+  else await play(entries.length > 2 ? 2 : 0);     // saved songs first, theme 1 if the library is empty
 
   const buf = new Uint8Array(32);
   const lc = $('eqLogo'), lctx = lc.getContext('2d'), DPRm = Math.min(2, devicePixelRatio || 1), TC = themeColors();
