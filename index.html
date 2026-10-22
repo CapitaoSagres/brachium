@@ -477,7 +477,7 @@
 <body data-theme="pip">
 
 <div id="boot">
-  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B19</span></div>
+  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B20</span></div>
   <div id="bootLog"></div>
   <canvas id="globe" aria-hidden="true"></canvas>
   <div class="tap">[ INITIATE SYSTEM ]</div>
@@ -612,7 +612,7 @@ const CONFIG = {
   sheetUrl: 'https://script.google.com/macros/s/AKfycbxZGZteYUqlIQaBmvQ6z2HRrNb67AZkOI_oRpesJl-EApOKii0mQiqHVDqWoM2oiYvdeg/exec',   /* your Apps Script web app URL (ends in /exec); leave empty to run on built-in commands */
   apiKey: 'if-you--like-pina-colada'      /* must match API_KEY in Code.gs */
 };
-const VERSION = 'v2.7', BUILD = 19;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
+const VERSION = 'v2.7', BUILD = 20;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
 
 /* ======================================================
    Fallback commands — used if the sheet can't be reached
@@ -1807,9 +1807,12 @@ function loadConfig() {
     try { saved = JSON.parse(localStorage.getItem('br-commands') || 'null'); } catch (e) {}
     if (!CONFIG.sheetUrl) return resolve({ list: saved || FALLBACK, offline: true, saved: !!saved });
     try {
-      const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 8000);
-      const res = await fetch(CONFIG.sheetUrl + '?api=config&key=' + encodeURIComponent(CONFIG.apiKey), { signal: ctrl.signal });
-      clearTimeout(timer);
+      // 8-second time limit done with a race instead of an AbortSignal: some preview
+      // environments relay fetch() through postMessage, which can't carry a signal.
+      const res = await Promise.race([
+        fetch(CONFIG.sheetUrl + '?api=config&key=' + encodeURIComponent(CONFIG.apiKey)),
+        new Promise((_, no) => setTimeout(() => no(new Error('no answer within 8s')), 8000))
+      ]);
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'datastore refused the request');
       try { localStorage.setItem('br-commands', JSON.stringify(data.commands)); } catch (e) {}
