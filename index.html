@@ -566,7 +566,7 @@
 <body data-theme="pip">
 
 <div id="boot">
-  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B22</span></div>
+  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B23</span></div>
   <div id="bootLog"></div>
   <canvas id="globe" aria-hidden="true"></canvas>
   <div class="tap">[ INITIATE SYSTEM ]</div>
@@ -732,7 +732,7 @@ const CONFIG = {
   sheetUrl: 'https://script.google.com/macros/s/AKfycbxZGZteYUqlIQaBmvQ6z2HRrNb67AZkOI_oRpesJl-EApOKii0mQiqHVDqWoM2oiYvdeg/exec',   /* your Apps Script web app URL (ends in /exec); leave empty to run on built-in commands */
   apiKey: 'if-you--like-pina-colada'      /* must match API_KEY in Code.gs */
 };
-const VERSION = 'v2.7', BUILD = 22;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
+const VERSION = 'v2.7', BUILD = 23;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
 
 /* ======================================================
    Fallback commands — used if the sheet can't be reached
@@ -1944,11 +1944,13 @@ function render() {
   const isMusic = c => /^music\b/i.test(c.effect || '') || c.label === 'JUKEBOX';
   commands.filter(c => !isMusic(c) && (activeGroup === 'ALL' || c.group === activeGroup)).forEach(c => {
     const b = document.createElement('button');
-    b.className = 'cmd' + (c.danger ? ' danger' : '');
+    // Hazard look: danger buttons (double press) and the Geiger counter (looks dangerous, single press)
+    const geiger = /^geiger\b/i.test(c.effect || '') || c.label === 'GEIGER COUNTER';
+    b.className = 'cmd' + (c.danger || geiger ? ' danger' : '');
     b.dataset.label = c.label;
     const n = String(commands.indexOf(c) + 1).padStart(2, '0');
     b.innerHTML = `<span class="code">CMD-${n} :: ${c.group}</span><span class="lbl"></span>` +
-                  `<small>${c.danger ? 'CAUTION: DOUBLE PRESS' : 'READY'}</small><i class="led"></i>`;
+                  `<small>${c.danger ? 'CAUTION: DOUBLE PRESS' : geiger ? 'CAUTION: RADIATION' : 'READY'}</small><i class="led"></i>`;
     b.querySelector('.lbl').textContent = c.label;
     b.onclick = () => run(c, b);
     $('grid').appendChild(b);
