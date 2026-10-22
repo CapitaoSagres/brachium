@@ -259,6 +259,33 @@
               border-bottom: 1px dashed var(--faint); padding-bottom: 4px; }
   @media (orientation: landscape) and (min-aspect-ratio: 3/2) { .side { display: flex; } }
 
+  /* ---------- Extractor (prank) ---------- */
+  .xlink { width: min(88vw, 70vh, 560px); height: auto; overflow: visible; }
+  .xdev { fill: none; stroke: var(--fg); stroke-width: 2; }
+  .xscr { fill: var(--faint); stroke: var(--dim); }
+  #exOv.found .xscr { fill: color-mix(in srgb, var(--fg) 25%, var(--bg)); }
+  .xcore { fill: var(--danger); }
+  .xcable { fill: none; stroke: var(--dim); stroke-width: 3; stroke-linecap: round; }
+  .xflow { fill: none; stroke: var(--accent); stroke-width: 3; stroke-dasharray: 4 14; stroke-linecap: round; opacity: 0;
+           filter: drop-shadow(0 0 3px var(--accent)); }
+  #exOv.flowing .xflow { opacity: 1; animation: xflow .5s linear infinite; }
+  @keyframes xflow { to { stroke-dashoffset: -18; } }
+  .xlab { font-family: 'Share Tech Mono', monospace; font-size: 8px; fill: var(--dim); text-anchor: middle; letter-spacing: 1px; }
+  .xstage { animation: none; text-align: center; max-width: 92vw; }
+  .xbar { width: min(80vw, 520px); height: 12px; border: 1px solid var(--dim); position: relative; }
+  .xbar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--fg); box-shadow: 0 0 8px var(--fg); }
+  .xbar::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 9px, var(--bg) 9px 11px); }
+  .xhex { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--dim); letter-spacing: 1px; height: 1.4em;
+          overflow: hidden; white-space: nowrap; max-width: 90vw; }
+  .xfinal { display: none; flex-direction: column; align-items: center; gap: 4px; }
+  #exOv.done .xfinal { display: flex; }
+  #exOv.done .xstage, #exOv.done .xbar, #exOv.done .xhex { display: none; }
+  .xh { font-family: 'VT323', monospace; font-size: clamp(30px, min(9vw, 11vh), 60px); letter-spacing: 8px; color: var(--fg); }
+  .xa { font-family: 'VT323', monospace; font-size: clamp(60px, min(20vw, 26vh), 150px); line-height: .9; color: var(--accent);
+        text-shadow: 0 0 12px var(--fg), 0 0 30px var(--fg); animation: holoText 1.2s steps(1) infinite; }
+  .xs { font-size: 11px; letter-spacing: 2px; color: var(--dim); }
+  @media (orientation: landscape) and (max-height: 520px) { #exOv { gap: 8px; } .xlink { width: min(60vw, 46vh * 3.5, 520px); } }
+
   /* ---------- Geiger counter ---------- */
   .gmeter { width: min(86vw, 60vh, 460px); height: auto; overflow: visible; }
   .gmeter .tk { stroke: var(--dim); stroke-width: 1; }
@@ -605,7 +632,7 @@
 <body data-theme="pip">
 
 <div id="boot">
-  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B24</span></div>
+  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B25</span></div>
   <div id="bootLog"></div>
   <canvas id="globe" aria-hidden="true"></canvas>
   <div class="tap">[ INITIATE SYSTEM ]</div>
@@ -743,6 +770,23 @@
   <div class="hud-line"><span id="gDose">DOSE 0.000 mR</span><span id="gSrc">SENSOR: MOTION</span></div>
 </div>
 
+<div class="radar-ov" id="exOv">
+  <div class="hud-line"><span>EXTRACTOR // DATA LINK</span><span>PORT: MICRO-USB</span></div>
+  <svg class="xlink" viewBox="0 0 320 90" aria-hidden="true">
+    <!-- gauntlet (the logo) on the left, the target phone on the right, cable between -->
+    <polygon class="xdev" points="40,14 66,62 14,62"/><circle cx="40" cy="47" r="3" class="xcore"/>
+    <rect class="xdev" x="262" y="8" width="40" height="72" rx="6"/><rect class="xscr" x="267" y="16" width="30" height="52"/>
+    <path class="xcable" d="M66 52 C 120 52, 140 80, 190 70 S 240 44, 262 46"/>
+    <path class="xflow" id="xFlow" d="M262 46 C 240 44, 240 60, 190 70 S 120 52, 66 52"/>
+    <text x="40" y="82" class="xlab">BRACHIUM</text><text x="282" y="88" class="xlab" id="xDevLab">UNKNOWN</text>
+  </svg>
+  <div class="rs xstage" id="xStage">SCANNING PORT</div>
+  <div class="xbar"><i id="xBar"></i></div>
+  <div class="xhex" id="xHex"></div>
+  <div class="xfinal" id="xFinal"><div class="xh" id="xHead"></div><div class="xa" id="xAmt"></div><div class="xs">TRANSFER COMPLETE // TAP TO DISCONNECT</div></div>
+  <div class="hud-line"><span id="xDev">DEVICE: SEARCHING</span><span id="xPct">000%</span></div>
+</div>
+
 <div class="radar-ov" id="mapOv">
   <div class="hud-line"><span>SATELLITE UPLINK // GEO-01</span><span id="sStat">ACQUIRING</span></div>
   <div class="map-row">
@@ -802,7 +846,7 @@ const CONFIG = {
   sheetUrl: 'https://script.google.com/macros/s/AKfycbxZGZteYUqlIQaBmvQ6z2HRrNb67AZkOI_oRpesJl-EApOKii0mQiqHVDqWoM2oiYvdeg/exec',   /* your Apps Script web app URL (ends in /exec); leave empty to run on built-in commands */
   apiKey: 'if-you--like-pina-colada'      /* must match API_KEY in Code.gs */
 };
-const VERSION = 'v2.7', BUILD = 24;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
+const VERSION = 'v2.7', BUILD = 25;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
 
 /* ======================================================
    Fallback commands — used if the sheet can't be reached
@@ -814,7 +858,7 @@ const FALLBACK = [
     result:'BIOSCAN COMPLETE: BRAIN ACTIVITY - LOW ({low}%)|TOXICITY LEVELS - HIGH ({high}%)|SENSE OF STYLE - TERRIBLE ({low}%)',
     danger:false, effect:'bioscan' },
   { label:'SATELLITE', group:'NAV', lines:['Acquiring satellites'], duration:0, result:'UPLINK CLOSED', danger:false, effect:'map' },
-  { label:'GEIGER COUNTER', group:'ENV', lines:['Sampling radiation'], duration:0, result:'READINGS LOGGED', danger:false, effect:'geiger' }
+  { label:'EXTRACTOR', group:'NET', lines:['Extracting funds from Revolut account'], duration:9000, result:'EXTRACTED - {eur}€', danger:false, effect:'extract' }
 ];
 
 /* HUD readouts. v is the fill level, 0-100. type picks the mini instrument.
@@ -843,6 +887,7 @@ function fill(t) {
     .replace(/\{n\}/g,     () => rand(2, 480))
     .replace(/\{low\}/g,   () => rand(2, 19))
     .replace(/\{high\}/g,  () => rand(81, 99))
+    .replace(/\{eur\}/g,   () => (rand(1, 1250) / 100).toFixed(2))      /* 0.01 to 12.50 */
     .replace(/\{coord\}/g, () => `${rand(10,89)}.${rand(1000,9999)}N ${rand(10,179)}.${rand(1000,9999)}W`)
     .replace(/\{name\}/g,  () => pick(NAMES));
 }
@@ -1285,7 +1330,7 @@ const SKEL_R = [
 ];
 /* Wireframe anatomy hints, right side only (mirrored) */
 const DETAIL_R = [
-  'M50 36 Q59 35.5 70 38.5', 'M51 54 Q61 60 68 54', 'M68.5 98 Q59 112 51.5 122',
+  'M50 36 Q59 35.5 70 38.5', 'M51 54 Q61 60 68 54',
   'M58 158 Q61.5 162 65 158', 'M53 30 L54 35'
 ];
 /* Organs behind the ribs (right lung, mirrored) */
@@ -1862,13 +1907,15 @@ async function run(cmd, btn) {
 
   await typeLine(`> EXEC ${cmd.label}`, 'sys', 5);
   const result = fill(cmd.result);
-  const DEFAULT_FX = { 'SCAN AREA': 'radar', 'CHECK VITALS': 'bioscan', 'JUKEBOX': 'music', 'SATELLITE': 'map', 'GEIGER COUNTER': 'geiger' };
+  const DEFAULT_FX = { 'SCAN AREA': 'radar', 'CHECK VITALS': 'bioscan', 'JUKEBOX': 'music', 'SATELLITE': 'map', 'GEIGER COUNTER': 'geiger', 'EXTRACTOR': 'extract' };
   // Effect cell can carry an argument, e.g. "music https://example.com/song.mp3"
   const [fxWord = '', ...fxArgs] = (cmd.effect || DEFAULT_FX[cmd.label] || '').trim().split(/\s+/);
   const effect = fxWord.toLowerCase();
 
   if (effect === 'music') {
     await musicPlayer(cmd, fxArgs.join(' '));
+  } else if (effect === 'extract') {
+    await extractor(cmd, result);
   } else if (effect === 'geiger') {
     await geigerCounter(cmd);
   } else if (effect === 'map') {
@@ -1992,6 +2039,66 @@ async function geigerCounter(cmd) {
   ov.classList.remove('on');
 }
 
+/* ---------- Extractor (prank) ----------
+   Pure theatre: nothing is read from or sent to the other phone. It plays a "connect,
+   bypass, extract" sequence, then shows a random amount from the result text. */
+function cashChime() {
+  if (!audio) return;
+  const t = audio.currentTime;
+  [[1319, 0], [1760, .07], [2637, .14]].forEach(([f, d]) => {
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = 'square'; o.frequency.value = f;
+    g.gain.setValueAtTime(.0001, t + d); g.gain.linearRampToValueAtTime(.05, t + d + .005);
+    g.gain.exponentialRampToValueAtTime(.0001, t + d + .35);
+    o.connect(g).connect(audio.destination); o.start(t + d); o.stop(t + d + .4);
+  });
+}
+async function extractor(cmd, result) {
+  const ov = $('exOv'), stage = $('xStage'), bar = $('xBar'), hex = $('xHex');
+  ov.classList.remove('found', 'flowing', 'done');
+  $('xDev').textContent = 'DEVICE: SEARCHING'; $('xDevLab').textContent = 'UNKNOWN'; bar.style.width = '0';
+  ov.classList.add('on');
+  await sleep(OPEN_MS);
+  // "EXTRACTED - 7.42€" -> headline + amount
+  const m = result.match(/^(.*?)\s*-\s*(.*?)\s*$/), head = m ? m[1] : result, amtText = m ? m[2] : '';
+  const amount = parseFloat((amtText.match(/[\d.,]+/) || ['0'])[0].replace(',', '.')) || 0;
+  const devId = 'ANDROID-' + rand(0, 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+  const dur = Math.max(5000, cmd.duration || 9000), extractText = fill(cmd.lines[0] || 'Extracting funds');
+  let lastTick = 0, lastStage = -1;
+  await new Promise(done => {
+    const t0 = performance.now();
+    (function frame(now) {
+      const p = Math.max(0, Math.min(1, (now - t0) / dur));
+      bar.style.width = (p * 100).toFixed(1) + '%';
+      $('xPct').textContent = String(Math.round(p * 100)).padStart(3, '0') + '%';
+      const st = p < .15 ? 0 : p < .3 ? 1 : p < .5 ? 2 : 3;
+      if (st !== lastStage) {
+        lastStage = st;
+        stage.textContent = ['SCANNING PORT...', 'DEVICE DETECTED', 'BYPASSING SECURITY', extractText.toUpperCase()][st];
+        tone([700, 1200, 900, 1400][st], .08, 'square', .05); buzz(30);
+        if (st >= 1) { ov.classList.add('found'); $('xDev').textContent = 'DEVICE: ' + devId; $('xDevLab').textContent = devId; }
+        if (st === 3) ov.classList.add('flowing');
+      }
+      if (now - lastTick > 110) {                       // streaming "data" and ticking sounds
+        lastTick = now;
+        hex.textContent = st === 3
+          ? 'TRANSFERRING ' + (amount * Math.min(1, (p - .5) / .5)).toFixed(2) + '€  //  ' + rand(0, 0xFFFFFF).toString(16).toUpperCase()
+          : Array.from({ length: 8 }, () => rand(0, 0xFFFF).toString(16).toUpperCase().padStart(4, '0')).join(' ');
+        if (st >= 2) tone(st === 3 ? 1500 + rand(0, 400) : 900, .02, 'square', .015);
+      }
+      p < 1 ? requestAnimationFrame(frame) : done();
+    })(performance.now());
+  });
+  // reveal
+  ov.classList.remove('flowing'); ov.classList.add('done');
+  $('xHead').textContent = head; $('xAmt').textContent = amtText || '';
+  cashChime(); buzz([60, 40, 120]);
+  await Promise.race([sleep(9000), new Promise(r => { ov.onclick = r; })]);
+  ov.onclick = null;
+  tone(400, .1);
+  ov.classList.remove('on', 'done', 'found');
+}
+
 /* ---------- Satellite map ----------
    Leaflet (open-source map library) drawing OpenStreetMap's free map tiles (no API key),
    inverted and recoloured to the theme with a CSS filter. Leaflet is only downloaded the first time
@@ -2091,13 +2198,14 @@ function render() {
   const isMusic = c => /^music\b/i.test(c.effect || '') || c.label === 'JUKEBOX';
   commands.filter(c => !isMusic(c) && (activeGroup === 'ALL' || c.group === activeGroup)).forEach(c => {
     const b = document.createElement('button');
-    // Hazard look: danger buttons (double press) and the Geiger counter (looks dangerous, single press)
+    // Hazard look: danger buttons (double press), plus the Extractor and Geiger counter (single press)
     const geiger = /^geiger\b/i.test(c.effect || '') || c.label === 'GEIGER COUNTER';
-    b.className = 'cmd' + (c.danger || geiger ? ' danger' : '');
+    const extract = /^extract\b/i.test(c.effect || '') || c.label === 'EXTRACTOR';
+    b.className = 'cmd' + (c.danger || geiger || extract ? ' danger' : '');
     b.dataset.label = c.label;
     const n = String(commands.indexOf(c) + 1).padStart(2, '0');
     b.innerHTML = `<span class="code">CMD-${n} :: ${c.group}</span><span class="lbl"></span>` +
-                  `<small>${c.danger ? 'CAUTION: DOUBLE PRESS' : geiger ? 'CAUTION: RADIATION' : 'READY'}</small><i class="led"></i>`;
+                  `<small>${c.danger ? 'CAUTION: DOUBLE PRESS' : extract ? 'CAUTION: LIVE LINK' : geiger ? 'CAUTION: RADIATION' : 'READY'}</small><i class="led"></i>`;
     b.querySelector('.lbl').textContent = c.label;
     b.onclick = () => run(c, b);
     $('grid').appendChild(b);
