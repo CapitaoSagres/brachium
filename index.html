@@ -187,6 +187,13 @@
            animation: sweep 1.4s linear infinite; }
   .sweep::after { content: ""; position: absolute; left: 50%; top: 0; width: 2px; height: 50%; background: var(--fg); }
   @keyframes sweep { to { transform: rotate(360deg); } }
+  .clog { display: flex; flex-direction: column; gap: 3px; font-family: 'Share Tech Mono', monospace; overflow: hidden; }
+  .clog div { display: flex; justify-content: space-between; color: var(--dim); animation: lineIn .25s steps(3); }
+  .clog div:first-child { color: var(--accent); }
+  .sig { flex: 1; display: flex; flex-direction: column-reverse; gap: 3px; min-height: 60px; }
+  .sig i { flex: 1; background: var(--faint); transition: background .15s; }
+  .sig i.on { background: var(--fg); } .sig i.on.hi { background: var(--lvl-mid); }
+  .sstat { line-height: 1.8; } .sstat b { color: var(--fg); font-weight: 400; }
   .rlogo { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   .radar.done .sweep { animation-play-state: paused; opacity: .25; }
   .rblip { position: absolute; width: 8px; height: 8px; margin: -4px; border-radius: 50%;
@@ -201,18 +208,29 @@
   .radar-ov.alerting > :not(.crn) { opacity: .15; }
 
   /* ---------- Bioscan: body silhouette ---------- */
-  .bio { height: min(62vh, 560px); width: auto; max-width: 100%; display: block; overflow: visible; }
-  @media (orientation: landscape) and (max-height: 520px) { .bio { height: 66vh; } }
+  .bio { flex-shrink: 0; height: min(62vh, 560px); width: auto; max-width: 100%; display: block; overflow: visible; }
+  @media (orientation: landscape) and (max-height: 520px) { .bio { height: 72vh; } #bioOv { gap: 4px; } }
   .bio .vol  { fill: var(--faint); opacity: .5; }
   .bio .vol.lit { fill: var(--fg); opacity: .12; }
   .bio .mesh { stroke: var(--dim); stroke-width: .4; opacity: .8; }
   .bio .mesh.lit { stroke: var(--fg); stroke-width: .45; opacity: 1; }
   .bio .cone { fill: var(--fg); opacity: .045; }
+  .bio .tframe { fill: none; stroke: var(--fg); stroke-width: .9; stroke-dasharray: 6 3; opacity: .45; }
+  .bio .tframe.lit { stroke: var(--accent); stroke-dasharray: none; opacity: .8; filter: drop-shadow(0 0 2px var(--fg)); }
+  .vs { display: flex; flex-direction: column; gap: 2px; }
+  .vs-t { display: flex; align-items: baseline; gap: 6px; }
+  .vs-t span { width: 34px; } .vs-t i { font-style: normal; }
+  .vs-t b { font-family: 'VT323', monospace; font-weight: 400; font-size: 22px; color: var(--accent); line-height: 1; }
+  .vs-w { width: 100%; height: 26px; display: block; }
+  .dna { width: 100%; height: 70px; display: block; }
+  .sysl { display: flex; flex-direction: column; gap: 4px; }
+  .sysl div { display: flex; justify-content: space-between; }
+  .sysl .s1 { color: var(--lvl-mid); animation: blink .5s steps(1) infinite; } .sysl .s2 { color: var(--accent); }
   .bio .cone-edge { stroke: var(--dim); stroke-width: .5; stroke-dasharray: 2 3; opacity: .7; }
   .bio .pad { fill: none; stroke: var(--dim); stroke-width: .6; stroke-dasharray: 3 2; }
   .bio #emit line { stroke-linecap: round; }
   .bio #emit .bk { stroke: var(--dim); stroke-width: .8; }
-  .bio #emit .fr { stroke: var(--fg); stroke-width: 1.3; }
+  .bio #emit .fr { stroke: var(--fg); stroke-width: 1.8; filter: drop-shadow(0 0 2px var(--fg)); }
   .bio #emit circle { fill: var(--danger); }
   .bio .organs { fill: var(--fg); fill-opacity: .08; stroke: var(--accent); stroke-width: .45; stroke-opacity: .55; }
   .bio .g0 { stop-color: var(--fg); stop-opacity: 0; }
@@ -231,6 +249,15 @@
   .rs.urgent { color: var(--danger); animation: blink .25s steps(1) infinite; }
   .radar-ov.warn { animation: warnFlash .22s steps(1) 4; }
   @keyframes warnFlash { 50% { box-shadow: inset 0 0 0 5px var(--danger); } }
+
+  /* ---------- Side panels for fullscreen screens (wide landscape only) ---------- */
+  .fx-row { display: flex; align-items: center; justify-content: center; gap: clamp(12px, 3vw, 40px); min-height: 0; }
+  .side { display: none; width: clamp(150px, 21vw, 270px); align-self: stretch; flex-direction: column; gap: 8px;
+          padding: 8px 10px; font-size: 10px; letter-spacing: 1.2px; color: var(--dim);
+          border-top: 1px solid var(--faint); border-bottom: 1px solid var(--faint); }
+  .side .sh { color: var(--fg); letter-spacing: 2px; font-size: 11px; display: flex; justify-content: space-between;
+              border-bottom: 1px dashed var(--faint); padding-bottom: 4px; }
+  @media (orientation: landscape) and (min-aspect-ratio: 3/2) { .side { display: flex; } }
 
   /* ---------- Geiger counter ---------- */
   .gmeter { width: min(86vw, 60vh, 460px); height: auto; overflow: visible; }
@@ -257,10 +284,23 @@
   }
 
   /* ---------- Satellite map (Leaflet + OpenStreetMap) ---------- */
-  :root, [data-theme="pip"] { --map-filter: grayscale(1) sepia(1) saturate(6) hue-rotate(68deg) brightness(1.5) contrast(1.2); }
-  [data-theme="amber"] { --map-filter: grayscale(1) sepia(1) saturate(5) hue-rotate(-8deg) brightness(1.5) contrast(1.2); }
-  [data-theme="red"] { --map-filter: grayscale(1) sepia(1) saturate(7) hue-rotate(-42deg) brightness(1.4) contrast(1.2); }
-  .mapbox { position: relative; width: min(94vw, 900px); height: min(52vh, 520px); border: 1px solid var(--fg); flex-shrink: 0; }
+  :root, [data-theme="pip"] { --map-filter: invert(1) grayscale(1) sepia(1) saturate(5) hue-rotate(68deg) brightness(1.05) contrast(1.35); }
+  [data-theme="amber"] { --map-filter: invert(1) grayscale(1) sepia(1) saturate(4) hue-rotate(-8deg) brightness(1.05) contrast(1.35); }
+  [data-theme="red"] { --map-filter: invert(1) grayscale(1) sepia(1) saturate(6) hue-rotate(-42deg) brightness(1) contrast(1.35); }
+  .map-row { display: flex; flex-direction: column; gap: 10px; width: min(94vw, 1100px); }
+  .mapbox { position: relative; width: 100%; height: min(52vh, 520px); border: 1px solid var(--fg); flex-shrink: 0; }
+  .map-side { display: flex; gap: 10px; align-items: stretch; }
+  .map-side .cmd { flex: 1; min-height: 46px; font-size: 20px; padding: 6px 10px; }
+  .ms-read { flex: 1.3; display: flex; flex-direction: column; justify-content: center; gap: 4px; font-size: 11px;
+             letter-spacing: 1.5px; color: var(--dim); white-space: pre-line; }
+  @media (orientation: landscape) and (max-height: 520px) {      /* map fills the height, controls in a slim column */
+    #mapOv { justify-content: flex-start; }
+    .map-row { flex-direction: row; flex: 1; min-height: 0; width: 100%; }
+    .mapbox { flex: 1; height: auto; }
+    .map-side { flex-direction: column; width: clamp(120px, 15vw, 170px); flex-shrink: 0; }
+    .map-side .cmd { flex: 0 0 auto; min-height: 52px; font-size: 18px; }
+    .ms-read { flex: 1; justify-content: flex-end; font-size: 10px; }
+  }
   #map { position: absolute; inset: 0; background: var(--bg); }
   #map .leaflet-tile-pane { filter: var(--map-filter); }
   #map .leaflet-control-zoom a { background: var(--bg); color: var(--fg); border-color: var(--dim);
@@ -285,7 +325,6 @@
           background: var(--danger); }
   @media (orientation: landscape) and (max-height: 520px) {
     #mapOv { gap: 5px; }
-    .mapbox { height: 56vh; }
     #mapOv .mbtns .cmd, #geiOv .mbtns .cmd { min-height: 46px; }
   }
 
@@ -467,7 +506,7 @@
   @keyframes tune { from { left: 12%; } 40% { left: 46%; } 55% { left: 41%; } to { left: 84%; } }
   .deck .led { position: absolute; top: 10px; right: 10px; width: 11px; height: 11px; border: 1px solid var(--dim); background: var(--bg); }
   .deck.run .led, .deck:active .led { background: var(--fg); border-color: var(--fg); box-shadow: 0 0 8px var(--fg); }
-  .grid.busy ~ .deck:not(.run) { opacity: .35; }
+  .controls:has(.grid.busy) .deck:not(.run) { opacity: .35; }
   .tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
   .tabs::-webkit-scrollbar { display: none; }
   .tabs[hidden] { display: none; }
@@ -566,7 +605,7 @@
 <body data-theme="pip">
 
 <div id="boot">
-  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B23</span></div>
+  <div class="logo">BRACHIUM<br><span id="osver">OS v2.7-B24</span></div>
   <div id="bootLog"></div>
   <canvas id="globe" aria-hidden="true"></canvas>
   <div class="tap">[ INITIATE SYSTEM ]</div>
@@ -601,7 +640,6 @@
 
   <div class="controls">
     <nav class="tabs" id="tabs" hidden></nav>
-    <section class="grid" id="grid"></section>
     <!-- Jukebox: its own radio-deck control, built in (not a Sheet button) -->
     <button class="deck" id="deck" aria-label="Jukebox">
       <span class="dk-grill" aria-hidden="true"></span>
@@ -609,19 +647,39 @@
       <span class="dk-dial" aria-hidden="true"><span class="dk-scale">88 · 92 · 96 · 100 · 104 · 108</span><i class="dk-needle"></i></span>
       <i class="led"></i>
     </button>
+    <section class="grid" id="grid"></section>
   </div>
 </div>
 
 <div class="radar-ov" id="radarOv">
   <div class="hud-line"><span>SECTOR SWEEP</span><span id="rBearing">BRG 000°</span></div>
-  <div class="radar" id="rField"><div class="sweep"></div><canvas class="rlogo" id="rLogo"></canvas></div>
+  <div class="fx-row">
+    <aside class="side">
+      <div class="sh"><span>CONTACT LOG</span><span>RNG</span></div>
+      <div class="clog" id="rLog"></div>
+    </aside>
+    <div class="radar" id="rField"><div class="sweep"></div><canvas class="rlogo" id="rLogo"></canvas></div>
+    <aside class="side">
+      <div class="sh"><span>SIGNAL</span><span id="rDb">+00 dB</span></div>
+      <div class="sig" id="rSig"></div>
+      <div class="sstat">MODE <b>ACTIVE</b><br>SWEEP <b>1.4 S</b><br>GAIN <b id="rGain">AUTO</b></div>
+    </aside>
+  </div>
   <div class="rs" id="rStatus"></div>
   <div class="hud-line"><span id="rRange">RNG 0000M</span><span id="rContacts">CONTACTS 00</span></div>
 </div>
 
 <div class="radar-ov" id="bioOv">
   <div class="hud-line"><span>BIOSCAN // SUBJECT 01</span><span id="bPct">SCAN 000%</span></div>
-  <svg class="bio" viewBox="-54 -6 212 260" aria-hidden="true">
+  <div class="fx-row">
+  <aside class="side">
+    <div class="sh"><span>VITAL SIGNS</span><span>LIVE</span></div>
+    <div class="vs"><div class="vs-t"><span>HR</span><b id="vHr">072</b><i>BPM</i></div><canvas class="vs-w" data-w="hr"></canvas></div>
+    <div class="vs"><div class="vs-t"><span>SPO2</span><b id="vSp">098</b><i>%</i></div><canvas class="vs-w" data-w="sp"></canvas></div>
+    <div class="vs"><div class="vs-t"><span>RESP</span><b id="vRr">016</b><i>RPM</i></div><canvas class="vs-w" data-w="rr"></canvas></div>
+    <div class="vs"><div class="vs-t"><span>TEMP</span><b id="vTp">36.8</b><i>°C</i></div><canvas class="vs-w" data-w="tp"></canvas></div>
+  </aside>
+  <svg class="bio" viewBox="-54 -6 212 276" aria-hidden="true">
     <defs>
       <linearGradient id="band" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g0"/><stop offset="1" class="g1"/></linearGradient>
       <clipPath id="scanClip"><rect id="scanRect" x="-80" y="-6" width="260" height="0"/></clipPath>
@@ -638,9 +696,12 @@
       </filter>
     </defs>
     <!-- unscanned: faint volume + dim contour mesh -->
-    <polygon class="cone" points="50,223 6,-2 94,-2"/>
-    <line class="cone-edge" x1="50" y1="223" x2="6" y2="-2"/><line class="cone-edge" x1="50" y1="223" x2="94" y2="-2"/>
-    <ellipse class="pad" cx="50" cy="243" rx="32" ry="6"/>
+    <polygon class="cone" points="50,226 4,-2 96,-2"/>
+    <line class="cone-edge" x1="50" y1="226" x2="4" y2="-2"/><line class="cone-edge" x1="50" y1="226" x2="96" y2="-2"/>
+    <ellipse class="pad" cx="50" cy="257" rx="42" ry="7"/>
+    <ellipse class="pad" cx="50" cy="257" rx="30" ry="4.5"/>
+    <!-- the logo triangle, inverted, framing the chest (lights up when scanned) -->
+    <polygon class="tframe" points="10,36 90,36 50,118"/>
     <use href="#bodyPath" class="vol"/>
     <use href="#meshPath" clip-path="url(#bodyClip)" class="mesh"/>
     <use href="#detailFig" style="stroke: var(--dim)"/>
@@ -649,6 +710,7 @@
       <use href="#bodyPath" class="vol lit"/>
       <use href="#meshPath" clip-path="url(#bodyClip)" class="mesh lit"/>
       <use href="#detailFig" style="stroke: var(--accent)" filter="url(#glow)"/>
+      <polygon class="tframe lit" points="10,36 90,36 50,118"/>
       <g class="organs" id="organs"></g>
       <g class="skel" id="skel"></g>
       <path class="heart" d="M51.2 57.6 C54.6 55.6 59 57.4 58.7 61.4 C58.4 65.4 55 68.2 52.6 69.6 C51.2 67.4 50.4 63.6 50.6 60.2 C50.7 59 50.9 58.2 51.2 57.6Z"/>
@@ -658,6 +720,12 @@
     <rect id="scanBand" x="-20" y="-20" width="140" height="16" fill="url(#band)"/>
     <line id="scanLine" class="sl" x1="-24" x2="124" y1="0" y2="0"/>
   </svg>
+  <aside class="side">
+    <div class="sh"><span>SCAN MATRIX</span><span id="bSysN">0/6</span></div>
+    <canvas class="dna" id="bDna"></canvas>
+    <div class="sysl" id="bSys"></div>
+  </aside>
+  </div>
   <div class="rs" id="bStatus"></div>
   <div class="hud-line"><span id="bHr">HR 000 BPM</span><span>DEPTH 03</span></div>
 </div>
@@ -677,11 +745,13 @@
 
 <div class="radar-ov" id="mapOv">
   <div class="hud-line"><span>SATELLITE UPLINK // GEO-01</span><span id="sStat">ACQUIRING</span></div>
-  <div class="mapbox"><div id="map"></div><div class="mapret" aria-hidden="true"></div><div class="mapmsg" id="sMsg"></div></div>
-  <div class="hud-line"><span id="sPos">LAT --.----- LON --.-----</span><span id="sAcc">ACC ----M</span></div>
-  <div class="mbtns">
-    <button class="cmd" id="sCenter">RECENTER<small>LOCK ON ME</small></button>
-    <button class="cmd stop" id="sClose">CLOSE<small>END UPLINK</small></button>
+  <div class="map-row">
+    <div class="mapbox"><div id="map"></div><div class="mapret" aria-hidden="true"></div><div class="mapmsg" id="sMsg"></div></div>
+    <div class="map-side">
+      <div class="ms-read"><span id="sPos">LAT --.-----\nLON --.-----</span><span id="sAcc">ACC ----M</span></div>
+      <button class="cmd" id="sCenter">RECENTER<small>LOCK ON ME</small></button>
+      <button class="cmd stop" id="sClose">CLOSE<small>END UPLINK</small></button>
+    </div>
   </div>
 </div>
 
@@ -732,7 +802,7 @@ const CONFIG = {
   sheetUrl: 'https://script.google.com/macros/s/AKfycbxZGZteYUqlIQaBmvQ6z2HRrNb67AZkOI_oRpesJl-EApOKii0mQiqHVDqWoM2oiYvdeg/exec',   /* your Apps Script web app URL (ends in /exec); leave empty to run on built-in commands */
   apiKey: 'if-you--like-pina-colada'      /* must match API_KEY in Code.gs */
 };
-const VERSION = 'v2.7', BUILD = 23;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
+const VERSION = 'v2.7', BUILD = 24;   /* bump BUILD with every update: shows as OS v2.7-B14 on boot */
 
 /* ======================================================
    Fallback commands — used if the sheet can't be reached
@@ -1139,17 +1209,32 @@ async function radarScan(cmd, result) {
   const ping = () => tone(1250, .25, 'sine', .06);
   ping();
   const pinger  = setInterval(ping, 1400);                    // one ping per sweep
+  const sig = $('rSig'); sig.innerHTML = '<i></i>'.repeat(14); $('rLog').innerHTML = '';
+  let strength = .3;
   const blipper = setInterval(() => {
-    addBlip(field, false); nudgeGauges(false);
+    const b = addBlip(field, false); nudgeGauges(false);
     $('rContacts').textContent = 'CONTACTS ' + String(++contacts).padStart(2, '0');
+    // contact log: newest on top, real bearing and distance of the blip that just appeared
+    const brg = Math.round((b.a * 180 / Math.PI + 90 + 360) % 360), rng = Math.round(b.d * 23);
+    const row = document.createElement('div');
+    row.innerHTML = `<span>C-${String(contacts).padStart(2, '0')}  ${String(brg).padStart(3, '0')}°</span><span>${String(rng).padStart(4, '0')}M</span>`;
+    $('rLog').prepend(row);
+    while ($('rLog').childElementCount > 9) $('rLog').lastChild.remove();
+    strength = Math.min(1, .35 + Math.random() * .6);
   }, 450);
+  const sigTimer = setInterval(() => {                       // signal meter breathes between contacts
+    strength = Math.max(.15, strength * .93 + (Math.random() - .5) * .06);
+    const lit = Math.round(strength * 14);
+    [...sig.children].forEach((c, k) => { c.classList.toggle('on', k < lit); c.classList.toggle('hi', k >= 10); });
+    $('rDb').textContent = '+' + String(Math.round(strength * 38)).padStart(2, '0') + ' dB';
+  }, 90);
 
   const lines = cmd.lines.length ? cmd.lines : ['Scanning area'];
   for (const l of lines) {
     st.textContent = fill(l);
     await sleep(cmd.duration / lines.length);
   }
-  clearInterval(hud); clearInterval(pinger); clearInterval(blipper);
+  clearInterval(hud); clearInterval(pinger); clearInterval(blipper); clearInterval(sigTimer);
 
   field.classList.add('done');
   addBlip(field, true);
@@ -1260,15 +1345,74 @@ function buildMarks() {
 /* The logo pyramid as the hologram projector under the feet: the body is "projected" from it */
 function drawEmitter(t) {
   const g = $('emit');
-  if (!g.childElementCount) g.innerHTML = '<line></line>'.repeat(6) + '<circle cx="50" cy="238" r="2"></circle>';
+  if (!g.childElementCount) g.innerHTML = '<line></line>'.repeat(6) + '<circle cx="50" cy="245" r="2.6"></circle>';
   const ls = g.querySelectorAll('line');
-  pyramidEdges(50, 238, 15, t * 1.1, .3).forEach((e, k) => {
+  pyramidEdges(50, 245, 22, t * 1.1, .3).forEach((e, k) => {
     const l = ls[k];
     l.setAttribute('x1', e.p[0].toFixed(2)); l.setAttribute('y1', e.p[1].toFixed(2));
     l.setAttribute('x2', e.q[0].toFixed(2)); l.setAttribute('y2', e.q[1].toFixed(2));
     l.setAttribute('class', e.front ? 'fr' : 'bk');
   });
-  g.querySelector('circle').setAttribute('r', (1.7 + 1.1 * Math.abs(Math.sin(t * 3))).toFixed(2));
+  g.querySelector('circle').setAttribute('r', (2.2 + 1.5 * Math.abs(Math.sin(t * 3))).toFixed(2));
+}
+/* Side panels for the bioscan: live vital-sign traces, a DNA helix, and a per-system status list */
+const BIO_SYS = ['NEURAL', 'CARDIO', 'TOXIN', 'CORE', 'MOTOR', 'SKELETAL'];
+function bioPanels() {
+  const TC = themeColors(), DPR = Math.min(2, devicePixelRatio || 1);
+  const waves = [...document.querySelectorAll('#bioOv .vs-w')].map(c => {
+    c.width = Math.max(80, Math.round(c.clientWidth * DPR)); c.height = Math.max(20, Math.round(c.clientHeight * DPR));
+    return { c, x: c.getContext('2d'), k: c.dataset.w };
+  });
+  const dna = $('bDna'), dx = dna.getContext('2d');
+  dna.width = Math.max(100, Math.round(dna.clientWidth * DPR)); dna.height = Math.max(40, Math.round(dna.clientHeight * DPR));
+  $('bSys').innerHTML = BIO_SYS.map(n => `<div><span>${n}</span><span>PENDING</span></div>`).join('');
+  const vals = { hr: 72, sp: 98, rr: 16, tp: 36.8 };
+  let lastVals = 0;
+  return function draw(t, y, shown) {
+    const hg = GAUGES.find(g => g.type === 'ecg'), bpm = hg ? bpmOf(hg) : 80;
+    if (t - lastVals > .6) {                                  // readings update a couple of times a second
+      lastVals = t; vals.hr = bpm;
+      vals.sp = 95 + Math.round(Math.random() * 4); vals.rr = 13 + Math.round(Math.random() * 6);
+      vals.tp = 36.4 + Math.round(Math.random() * 9) / 10;
+      $('vHr').textContent = String(vals.hr).padStart(3, '0'); $('vSp').textContent = String(vals.sp).padStart(3, '0');
+      $('vRr').textContent = String(vals.rr).padStart(3, '0'); $('vTp').textContent = vals.tp.toFixed(1);
+    }
+    waves.forEach(({ c, x, k }) => {                         // scrolling traces
+      const W = c.width, H = c.height;
+      x.clearRect(0, 0, W, H); x.strokeStyle = k === 'hr' ? TC.fg : TC.dim; x.lineWidth = 1.4 * DPR; x.beginPath();
+      for (let i = 0; i <= 60; i++) {
+        const u = i / 60;
+        let v;
+        if (k === 'hr') v = ecgWave(((t * bpm / 60 - u * 2.2) % 1 + 1) % 1) / 11;
+        else if (k === 'sp') { const ph = (t * 1.2 - u * 2.5) * Math.PI * 2; v = -(.55 * Math.sin(ph) + .22 * Math.sin(2 * ph + 1)); }
+        else if (k === 'rr') v = -.7 * Math.sin((t * .3 - u * 1.2) * Math.PI * 2);
+        else v = (Math.sin(u * 40 + t * 3) * .04);
+        const px = u * W, py = H / 2 + v * H * .45;
+        i ? x.lineTo(px, py) : x.moveTo(px, py);
+      }
+      x.stroke();
+    });
+    const W = dna.width, H = dna.height;                     // DNA helix, turning
+    dx.clearRect(0, 0, W, H);
+    for (let i = 0; i <= 40; i++) {
+      const u = i / 40, q = u * Math.PI * 4 + t * 2, a = Math.sin(q), b2 = Math.sin(q + Math.PI);
+      const px = u * W, ya = H / 2 + a * H * .38, yb = H / 2 + b2 * H * .38;
+      if (i % 3 === 0) { dx.globalAlpha = .45; dx.strokeStyle = TC.dim; dx.lineWidth = 1 * DPR; dx.beginPath(); dx.moveTo(px, ya); dx.lineTo(px, yb); dx.stroke(); }
+      dx.globalAlpha = .55 + .45 * Math.cos(q); dx.fillStyle = TC.fg; dx.fillRect(px - DPR, ya - DPR, 2.4 * DPR, 2.4 * DPR);
+      dx.globalAlpha = .55 + .45 * Math.cos(q + Math.PI); dx.fillStyle = TC.dim; dx.fillRect(px - DPR, yb - DPR, 2.4 * DPR, 2.4 * DPR);
+    }
+    dx.globalAlpha = 1;
+    const rows = $('bSys').children;                         // per-system status follows the beam
+    let done = 0;
+    MARKS.forEach(([my], i) => {
+      const st = shown.has(i) ? 2 : (my - y < 25 && my >= y) ? 1 : 0;
+      if (st === 2) done++;
+      const r = rows[i].lastChild;
+      r.className = st ? 's' + st : '';
+      r.textContent = ['PENDING', 'SCANNING', 'LOGGED'][st];
+    });
+    $('bSysN').textContent = done + '/' + MARKS.length;
+  };
 }
 async function bioScan(cmd, result) {
   const ov = $('bioOv'), st = $('bStatus');
@@ -1278,6 +1422,7 @@ async function bioScan(cmd, result) {
   const lines = cmd.lines.length ? cmd.lines : ['Scanning subject'];
   const shown = new Set();
   const hum = setInterval(() => tone(rand(180, 240), .08, 'sawtooth', .02), 260);
+  const panels = bioPanels();
   const hr  = setInterval(() => { const hg = GAUGES.find(g => g.type === 'ecg'); $('bHr').textContent = 'HR ' + (hg ? bpmOf(hg) : rand(96, 148)) + ' BPM'; }, 500);
 
   await new Promise(done => {
@@ -1290,6 +1435,7 @@ async function bioScan(cmd, result) {
       $('scanBand').setAttribute('y', y - 16);
       $('bPct').textContent = 'SCAN ' + String(Math.round(p * 100)).padStart(3, '0') + '%';
       drawEmitter(now / 1000);
+      panels(now / 1000, y, shown);
       st.textContent = fill(lines[Math.min(lines.length - 1, Math.floor(p * lines.length))]);
       MARKS.forEach(([my], i) => {
         if (y >= my && !shown.has(i)) {
@@ -1847,8 +1993,8 @@ async function geigerCounter(cmd) {
 }
 
 /* ---------- Satellite map ----------
-   Leaflet (open-source map library) drawing OpenStreetMap data (free community map),
-   using CARTO's dark map style, recoloured to the theme with a CSS filter. Leaflet is only downloaded the first time
+   Leaflet (open-source map library) drawing OpenStreetMap's free map tiles (no API key),
+   inverted and recoloured to the theme with a CSS filter. Leaflet is only downloaded the first time
    you open the map. Needs mobile data and permission to use your location. */
 let leafletP = null, map = null, meMarker = null, mePos = null;
 function loadLeaflet() {
@@ -1881,10 +2027,10 @@ async function satellite(cmd) {
     say('');
     if (!map) {
       map = L.map('map', { zoomControl: true, attributionControl: true }).setView([20, 0], 2);
-      // CARTO "Dark Matter": OpenStreetMap data drawn light-on-dark, free for personal use
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        { maxZoom: 19, subdomains: 'abcd',
-          attribution: '&copy; OpenStreetMap contributors &copy; CARTO' }).addTo(map);
+      // OpenStreetMap's own tiles: free, no key needed (just the credit line).
+      // They're drawn dark-on-light, so the CSS filter inverts them before tinting.
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
     }
     setTimeout(() => map.invalidateSize(), 60);
     if (mePos) map.setView(mePos, 16);
@@ -1898,10 +2044,11 @@ async function satellite(cmd) {
         else meMarker.setLatLng(mePos);
         if (first) { map.setView(mePos, 16); tone(1300, .08); }
         stat.textContent = 'UPLINK ESTABLISHED';
-        $('sPos').textContent = 'LAT ' + mePos[0].toFixed(5) + '  LON ' + mePos[1].toFixed(5);
+        $('sPos').textContent = 'LAT ' + mePos[0].toFixed(5) + '\nLON ' + mePos[1].toFixed(5);
         $('sAcc').textContent = 'ACC ' + String(Math.round(p.coords.accuracy)).padStart(4, '0') + 'M';
       }, err => {
         stat.textContent = err.code === 1 ? 'LOCATION DENIED' : 'NO GPS FIX';
+        if (err.code === 1) say('LOCATION PERMISSION DENIED\nAllow location for this app in\nAndroid Settings > Apps > BRACHIUM');
       }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
     }
   } catch (e) {
@@ -2172,6 +2319,7 @@ $('osver').textContent = 'OS ' + VERSION + '-B' + BUILD;
 if ('serviceWorker' in navigator && !(window.google && google.script) && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service worker not registered', e));
 }
+try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
 const configReady = loadConfig();   // starts fetching during the boot animation
 
 $('boot').addEventListener('click', async () => {
