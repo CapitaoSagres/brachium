@@ -2,7 +2,7 @@
   "name": "BRACHIUM OS",
   "short_name": "BRACHIUM",
   "description": "Personal retro-futuristic gauntlet interface.",
-  "id": "./",
+  "id": "/brachium/",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
